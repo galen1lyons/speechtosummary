@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.Zone.Identifier
+*:Zone.Identifier
+
+# Project specific
+*_backup.*
+*_backup/
+
+# Outputs - all generated run artifacts are excluded; keep structure files
+outputs/runs/
+outputs/campaigns/
+outputs/archive/
+!outputs/README.md
+!outputs/reference/
+
+# Results - keep reference evaluation JSONs and README
+results/
+!results/README.md
+!results/*.json
+
+# Data files - track ground truth and README, exclude generated files
+data/*.json
+!data/README.md
+
+# Model cache
+.cache/
+models/
+
+# Logs
+*.log
+logs/
+.env
