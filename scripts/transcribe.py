@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.transcribe_faster import transcribe_faster
 from src.transcribe import transcribe as transcribe_openai
 from src.evaluation.asr_metrics import evaluate_transcription, calculate_wer, calculate_cer
+from src.utils import strip_transcript_timestamps
 from src.comparison import compare_models
 from src.diarize import load_rttm
 from src.evaluation.diarization_metrics import evaluate_diarization
@@ -174,7 +175,7 @@ def cmd_evaluate(args):
 
     # Read files
     hypothesis = hypothesis_path.read_text(encoding='utf-8')
-    reference = reference_path.read_text(encoding='utf-8')
+    reference = strip_transcript_timestamps(reference_path.read_text(encoding='utf-8'))
 
     logger.info(f"Evaluating: {hypothesis_path.name}")
     logger.info(f"Reference: {reference_path.name}")
@@ -217,7 +218,7 @@ def cmd_compare(args):
     if args.reference:
         reference_path = Path(args.reference).expanduser().resolve()
         if reference_path.exists():
-            reference_text = reference_path.read_text(encoding='utf-8')
+            reference_text = strip_transcript_timestamps(reference_path.read_text(encoding='utf-8'))
         else:
             logger.warning(f"Reference file not found: {reference_path}")
 

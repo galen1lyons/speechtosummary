@@ -32,13 +32,27 @@ if not SRC.is_dir():
 
 # ─────────────────────────────────────────────
 # STEP 1 — enumerate every .py file in src/
+#           including subpackage directories
 # ─────────────────────────────────────────────
 src_files = sorted(SRC.glob("*.py"))
+# Also collect files from immediate subdirectories (e.g. src/evaluation/*.py)
+subpkg_files = sorted(SRC.glob("*/*.py"))
 src_names = {f.stem for f in src_files}          # e.g. {"__init__", "config", ...}
+# Add dotted keys for subpackage files so "evaluation.asr_metrics" resolves,
+# and also plain stems so intra-subpackage imports ("from .asr_metrics") resolve
+for f in subpkg_files:
+    parent_stem = f.parent.name
+    src_names.add(f"{parent_stem}.{f.stem}")      # e.g. "evaluation.asr_metrics"
+    src_names.add(parent_stem)                    # e.g. "evaluation" (the package)
+    src_names.add(f.stem)                         # plain stem for intra-subpackage imports
+
+all_src_files = src_files + subpkg_files
 
 print(bold("\n📂  Files found in src/"))
 for f in src_files:
     print(f"      {f.name}")
+for f in subpkg_files:
+    print(f"      {f.parent.name}/{f.name}")
 
 # ─────────────────────────────────────────────
 # STEP 2 — parse every file: extract all
@@ -47,7 +61,7 @@ for f in src_files:
 # Map:  filename  →  list of (module_stem, [imported_names])
 file_imports = {}       # what each file asks for
 
-for pyfile in src_files:
+for pyfile in all_src_files:
     source = pyfile.read_text(encoding="utf-8")
     try:
         tree = ast.parse(source)
@@ -71,7 +85,7 @@ for pyfile in src_files:
 # Map:  module_stem  →  set of defined names
 module_exports = {}
 
-for pyfile in src_files:
+for pyfile in all_src_files:
     source = pyfile.read_text(encoding="utf-8")
     try:
         tree = ast.parse(source)
@@ -89,7 +103,15 @@ for pyfile in src_files:
                 if isinstance(target, ast.Name):
                     defined.add(target.id)
 
-    module_exports[pyfile.stem] = defined
+    # Key by dotted name for subpackage files, plain stem for top-level.
+    # Store both so intra-subpackage ("from .asr_metrics") and
+    # cross-package ("from .evaluation.asr_metrics") lookups both resolve.
+    if pyfile.parent != SRC:
+        dotted_key = f"{pyfile.parent.name}.{pyfile.stem}"
+        module_exports[dotted_key] = defined
+        module_exports[pyfile.stem] = defined   # plain stem for intra-subpackage
+    else:
+        module_exports[pyfile.stem] = defined
 
 # ─────────────────────────────────────────────
 # STEP 4 — cross-reference: does every import
@@ -148,10 +170,15 @@ for imports in file_imports.values():
         all_imported_modules.add(mod_stem)
 
 # __init__ and pipeline are entry-points, not "imported" by siblings
-entry_points = {"__init__", "pipeline"}
+# Also exclude subpackage __init__ files and dotted stems for subpackage files
+# that are accessed via their package (e.g. evaluation.asr_metrics imported as
+# "from .evaluation.asr_metrics import …" resolves through the package name)
+entry_points = {"__init__", "pipeline", "evaluation", "evaluation.__init__"}
 
 for stem in src_names - all_imported_modules - entry_points:
-    print(f"      {yellow('⚠️ ')}  src/{stem}.py  — nothing imports it")
+    # Display path nicely for dotted subpackage keys
+    display = stem.replace(".", "/") + ".py"
+    print(f"      {yellow('⚠️ ')}  src/{display}  — nothing imports it")
 
 print()
 

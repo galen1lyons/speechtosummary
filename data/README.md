@@ -47,8 +47,16 @@ category_description.mp3
   - `{filename}.summary.md` - Summary with action items
 
 ## Current Test Files
-- `base_mamak.mp3` - Clean mamak stall conversation
-- `chaos_parliament.mp3` - Parliamentary debate with overlapping speech
-- `interference_chinese.mp3` - Chinese language interference
-- `malaysian_whisper_stress_test.mp3` - Comprehensive stress test
-- `shouting.mp3` - High-volume speech test
+
+| File | Size | Notes |
+|------|------|-------|
+| `base_mamak.mp3` | 45 MB | Clean mamak stall conversation |
+| `chaos_parliament.mp3` | 3.4 MB | Parliamentary debate with overlapping speech |
+| `interference_chinese.mp3` | 12 MB | Chinese language interference |
+| `malaysian_whisper_stress_test.mp3` | 9.2 MB | Comprehensive stress test |
+| `shouting.mp3` | 3.6 MB | High-volume speech test |
+| `mamak session scam.mp3` | 9.2 MB | ⚠️ Spaces in filename — human transcript available |
+| `Studio Sembang Slice -  Wan in a Million ft. James Wan & _.mp3` | 5.4 MB | ⚠️ Spaces and special chars — human transcript available |
+
+> **⚠️ Naming violations:** `mamak session scam.mp3` and the Studio Sembang file do not follow the
+> `category_description.mp3` convention. Rename them if re-adding to the test suite.

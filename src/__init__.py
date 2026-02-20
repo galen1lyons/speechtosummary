@@ -78,6 +78,7 @@ from .utils import (
     normalize_text,
     parse_device,
     sanitize_filename,
+    strip_transcript_timestamps,
     validate_audio_file,
 )
 
@@ -134,4 +135,5 @@ __all__ = [
     "get_file_size_mb",
     "normalize_text",
     "format_duration",
+    "strip_transcript_timestamps",
 ]

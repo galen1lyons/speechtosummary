@@ -132,25 +132,24 @@ CORE_FILES = [
     "logger.py",
     "utils.py",
     "transcribe.py",
+    "transcribe_faster.py",
     "summarize.py",
     "pipeline.py",
+    "diarize.py",
+    "comparison.py",
 ]
 
 OPTIONAL_FILES = [
-    "diarize.py",
-    "asr_metrics.py",
-    "transcribe_v2.py",   # dead file — flag it
+    # evaluation/ is a subdirectory — checked via import smoke-test below
 ]
 
 for fname in CORE_FILES:
     report(f"src/{fname}", (ROOT / "src" / fname).is_file())
 
-print(bold("  Optional / extra files:"))
-for fname in OPTIONAL_FILES:
-    exists = (ROOT / "src" / fname).is_file()
-    if fname == "transcribe_v2.py" and exists:
-        print(f"  {WARN}  src/{fname}  — exists but is NOT used by anything (safe to delete)")
-    else:
+if OPTIONAL_FILES:
+    print(bold("  Optional / extra files:"))
+    for fname in OPTIONAL_FILES:
+        exists = (ROOT / "src" / fname).is_file()
         tag = PASS if exists else yellow("⏭️  not present")
         print(f"  {tag}  src/{fname}")
 
@@ -175,8 +174,6 @@ MODULES_TO_TEST = [
 # add optional modules only if the file is present
 if (ROOT / "src" / "diarize.py").is_file():
     MODULES_TO_TEST.append("src.diarize")
-if (ROOT / "src" / "asr_metrics.py").is_file():
-    MODULES_TO_TEST.append("src.asr_metrics")
 
 for mod in MODULES_TO_TEST:
     try:
