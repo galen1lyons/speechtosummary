@@ -49,7 +49,6 @@ from .logger import get_logger, setup_logger
 # Core functionality
 from .transcribe import transcribe
 from .summarize import create_structured_summary, load_transcript
-from .pipeline import run_pipeline
 
 # ASR Metrics
 from .evaluation.asr_metrics import (
@@ -110,7 +109,6 @@ __all__ = [
     "transcribe",
     "create_structured_summary",
     "load_transcript",
-    "run_pipeline",
     
     # ASR Metrics
     "ASRMetrics",
