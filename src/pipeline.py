@@ -26,7 +26,7 @@ from .logger import get_logger
 from .summarize import create_structured_summary, load_transcript
 from .transcribe import transcribe as transcribe_audio
 from .transcribe_faster import transcribe_faster
-from .utils import parse_device, sanitize_filename
+from .utils import parse_device, sanitize_filename, strip_transcript_timestamps
 
 logger = get_logger(__name__)
 
@@ -507,7 +507,9 @@ def main() -> None:
     reference_transcript = None
     if args.reference_transcript:
         ref_path = Path(args.reference_transcript).expanduser().resolve()
-        reference_transcript = ref_path.read_text(encoding="utf-8")
+        reference_transcript = strip_transcript_timestamps(
+            ref_path.read_text(encoding="utf-8")
+        )
 
     # Resolve reference RTTM path if provided
     reference_rttm_path = None

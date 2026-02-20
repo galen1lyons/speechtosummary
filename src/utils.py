@@ -129,6 +129,33 @@ def normalize_text(text: str, remove_punctuation: bool = False) -> str:
     return text
 
 
+def strip_transcript_timestamps(text: str) -> str:
+    """
+    Strip timestamp markers from a transcript file before WER/CER evaluation.
+
+    Handles the project's standard timestamped format:
+        [12.91 - 15.59] Some spoken text here.
+    Also strips inline bracket annotations such as [unintelligible].
+
+    Args:
+        text: Raw transcript file contents (may contain timestamp markers)
+
+    Returns:
+        Plain text with timestamps and bracket annotations removed,
+        ready for ASR metric evaluation.
+    """
+    lines = []
+    for line in text.splitlines():
+        # Remove leading segment timestamp  [start - end]
+        line = re.sub(r"^\[\d+\.?\d*\s*-\s*\d+\.?\d*\]\s*", "", line)
+        # Remove any remaining bracket annotations e.g. [unintelligible]
+        line = re.sub(r"\[[^\]]*\]", "", line)
+        line = line.strip()
+        if line:
+            lines.append(line)
+    return "\n".join(lines)
+
+
 def format_duration(seconds: float) -> str:
     """
     Format duration in seconds to human-readable string.
