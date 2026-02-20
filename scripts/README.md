@@ -45,15 +45,6 @@ python scripts/check_project.py
 - Verifies dependencies
 - **Run this first when troubleshooting**
 
-### **`probe.py`** - Hardware & Model Diagnostics
-```bash
-python scripts/probe.py
-```
-- Hardware inventory (RAM, GPU, disk)
-- Model download and loading tests
-- Memory requirement checks
-- **Run before working with large models**
-
 ### **`validate_setup.py`** - Environment Validation
 ```bash
 python scripts/validate_setup.py
@@ -90,6 +81,11 @@ Scripts replaced by the modular CLI:
 
 See [archive/deprecated_2026-02-19/README.md](archive/deprecated_2026-02-19/README.md) for migration guide.
 
+### `archive/deprecated_2026-02-20/`
+Scripts retired after evaluation proved them obsolete:
+- `evaluate_human_ground_truth.py` → superseded by `python -m src.pipeline --reference-transcript`; had hardcoded pre-reorganisation paths
+- `probe.py` → hardware feasibility probe for Malaysian Whisper/MaLLaM; purpose served (both ruled unviable)
+
 ### `archive/`
 Other archived scripts:
 - `verify_parameter_fix.py` - One-time verification
@@ -98,8 +94,8 @@ Other archived scripts:
 
 ### `experimental/`
 Experimental features:
-- `summarize_mallam.py` - Malaysian LLM summarization
-- `sync_project.py` - Import audit tool
+- `summarize_mallam.py` - Malaysian LLM summarization (not production-ready)
+- `sync_project.py` - Import audit tool (maps src/ imports to actual files)
 
 ---
 
@@ -181,4 +177,4 @@ python scripts/transcribe.py transcribe --audio file.mp3
 
 ---
 
-**Last Updated:** 2026-02-19
+**Last Updated:** 2026-02-20

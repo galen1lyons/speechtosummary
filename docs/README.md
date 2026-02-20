@@ -18,9 +18,9 @@ Welcome to the speechtosummary documentation. This page helps you navigate to th
 
 **Comparing Whisper models or running tests?**
 
-- **[Testing Documentation](testing/README.md)** - Model comparison and testing suites
-- **[Comprehensive Test Suite](testing/COMPREHENSIVE_TESTS.md)** - 36-test systematic evaluation
-- **[Optimal Test Suite](testing/OPTIMAL_TESTS.md)** - 8-test focused evaluation
+- **[faster-whisper Optimization](FASTER_WHISPER_OPTIMIZATION.md)** - VAD and parameter tuning guide
+- **[Ground Truth Guide](GROUND_TRUTH_GUIDE.md)** - Creating reference transcripts for WER/CER evaluation
+- **[Transcribe CLI Guide](../scripts/TRANSCRIBE_CLI_GUIDE.md)** - Full CLI for compare/evaluate subcommands
 
 ---
 
@@ -29,15 +29,8 @@ Welcome to the speechtosummary documentation. This page helps you navigate to th
 **Working on the codebase?**
 
 - **Project Context**: See [CLAUDE.md](../CLAUDE.md) for development standards
-- **Data Files**: See [data/README.md](../data/README.md) for naming conventions
-- **Archive**: Historical docs in [ARCHIVE/](ARCHIVE/)
-
----
-
-## 🎓 Demos and Examples
-
-- **[Google Colab Demo](../demo/GOOGLE_COLAB.md)** - Run in the browser
-- **[Whisper Parameters Guide](../demo/WHISPER_PARAMETERS.md)** - Parameter reference
+- **Data Files**: See [data/README.md](../data/README.md) for naming conventions and test files
+- **Outputs**: See [outputs/README.md](../outputs/README.md) for run folder structure
 
 ---
 
@@ -46,21 +39,25 @@ Welcome to the speechtosummary documentation. This page helps you navigate to th
 ### Common Commands
 
 ```bash
-# Basic transcription
-python -m src.pipeline --audio meeting.mp3
+# Basic transcription (faster-whisper, default)
+python -m src.pipeline --audio data/meeting.mp3
 
 # With speaker identification
-python -m src.pipeline --audio meeting.mp3 --diarize
+python -m src.pipeline --audio data/meeting.mp3 --enable-diarization
 
 # Better accuracy (slower)
-python -m src.pipeline --audio meeting.mp3 --whisper-model medium
+python -m src.pipeline --audio data/meeting.mp3 --whisper-model medium
+
+# Evaluate against human transcript
+python -m src.pipeline --audio data/meeting.mp3 \
+  --reference-transcript outputs/reference/human/mamak_session_scam/FW5_Human_Transcribe.txt
 ```
 
 ### File Locations
 
 - **Audio files**: `data/`
-- **Transcripts**: `outputs/`
-- **Test results**: `results/`
+- **Pipeline outputs**: `outputs/runs/` (production) or `outputs/campaigns/eval/` (evaluation)
+- **Human references**: `outputs/reference/human/`
 - **Scripts**: `scripts/`
 
 ---
@@ -73,5 +70,5 @@ python -m src.pipeline --audio meeting.mp3 --whisper-model medium
 
 ---
 
-**Documentation Version**: 2.0
-**Last Updated**: 2026-02-09
+**Documentation Version**: 2.1
+**Last Updated**: 2026-02-20

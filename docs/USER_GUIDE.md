@@ -41,22 +41,22 @@ python -m src.pipeline --audio <path-to-audio> [options]
 | `base` | 74M | ⚡⚡ | ⭐⭐⭐ | 1GB | **Default - good balance** |
 | `small` | 244M | ⚡ | ⭐⭐⭐⭐ | 2GB | Better accuracy needed |
 | `medium` | 769M | 🐌 | ⭐⭐⭐⭐⭐ | 5GB | Best quality |
-| `mesolitica/malaysian-whisper-base` | 74M | ⚡⚡ | ⭐⭐⭐⭐ (Manglish) | 1GB | Malaysian English/Malay |
+| `mesolitica/malaysian-whisper-base` | 74M | ❌ | ❌ (unviable) | 1GB | Not recommended — see note below |
 
 ### Selecting a Model
 
 ```bash
-# Default (OpenAI Whisper base)
-python -m src.pipeline --audio meeting.mp3
+# Default (faster-whisper base)
+python -m src.pipeline --audio data/meeting.mp3
 
 # Fast testing
-python -m src.pipeline --audio meeting.mp3 --whisper-model tiny
+python -m src.pipeline --audio data/meeting.mp3 --whisper-model tiny
 
 # Best quality
-python -m src.pipeline --audio meeting.mp3 --whisper-model medium
+python -m src.pipeline --audio data/meeting.mp3 --whisper-model medium
 
-# Malaysian Whisper (for Manglish)
-python -m src.pipeline --audio meeting.mp3 --whisper-model mesolitica/malaysian-whisper-base
+# Optimal Manglish settings (recommended)
+python scripts/transcribe.py transcribe --audio "data/meeting.mp3" --config fw5_optimal
 ```
 
 ### Model Selection Guide
@@ -72,10 +72,10 @@ python -m src.pipeline --audio meeting.mp3 --whisper-model mesolitica/malaysian-
 - Multiple speakers with overlapping speech
 - Technical terminology present
 
-**Choose Malaysian Whisper if:**
-- Speakers use Manglish (Malaysian English)
-- Code-switching between English and Malay
-- Malaysian accents and colloquialisms
+**Malaysian Whisper (`mesolitica/malaysian-whisper-*`):**
+Evaluated and found unviable for production use — RTF 23.7x (real-time), 1,027 hallucinations
+on a 9-minute file. Use `fw5_optimal` config with faster-whisper base instead.
+Requires `--backend openai-whisper` if you still wish to test it.
 
 ---
 
@@ -130,7 +130,7 @@ python -m src.pipeline --audio meeting.mp3 \
 - `--temperature`: 0.0-1.0 (default: 0.0). Use 0.0 for transcription
 - `--initial-prompt`: Provide context to improve accuracy for technical terms
 
-For detailed parameter documentation, see [demo/WHISPER_PARAMETERS.md](../demo/WHISPER_PARAMETERS.md)
+For detailed parameter documentation, see [FASTER_WHISPER_OPTIMIZATION.md](FASTER_WHISPER_OPTIMIZATION.md)
 
 ---
 
@@ -142,15 +142,15 @@ Identify who spoke when in multi-speaker audio.
 
 ```bash
 # Enable diarization
-python -m src.pipeline --audio meeting.mp3 --diarize
+python -m src.pipeline --audio data/meeting.mp3 --enable-diarization
 ```
 
 #### Specify Speaker Count
 
 ```bash
 # If you know the number of speakers
-python -m src.pipeline --audio meeting.mp3 \
-  --diarize \
+python -m src.pipeline --audio data/meeting.mp3 \
+  --enable-diarization \
   --min-speakers 2 \
   --max-speakers 4
 ```
@@ -162,9 +162,10 @@ python -m src.pipeline --audio meeting.mp3 \
 
 #### Output Files
 
-With diarization enabled, you get additional outputs:
-- `meeting.speakers.txt` - Transcript with speaker labels (SPEAKER_00, SPEAKER_01, etc.)
-- `meeting.speaker_stats.json` - Speaking time statistics per speaker
+With diarization enabled, you get additional outputs inside the run folder:
+- `speakers.txt` - Transcript with speaker labels (SPEAKER_00, SPEAKER_01, etc.)
+- `speaker_stats.json` - Speaking time statistics per speaker
+- `diarization.rttm` - RTTM output for DER/JER evaluation
 
 #### Example Output
 
@@ -256,24 +257,17 @@ Transcription Metrics:
 
 ### Hallucination Suppression
 
-Control hallucination detection thresholds (prevents model from generating repeated or nonsense text):
+The default faster-whisper backend (`fw5_optimal` config) uses strict VAD settings that eliminate
+~99% of hallucinations. If you're using the openai-whisper backend and see repeated or nonsense
+text, use a lower beam size or switch to faster-whisper:
 
 ```bash
-python -m src.pipeline --audio meeting.mp3 \
-  --compression-ratio-threshold 2.4 \
-  --logprob-threshold -1.0 \
-  --no-speech-threshold 0.6
+# Recommended: use faster-whisper with optimal config
+python scripts/transcribe.py transcribe --audio "data/meeting.mp3" --config fw5_optimal
+
+# Or switch backend explicitly
+python -m src.pipeline --audio data/meeting.mp3 --backend faster-whisper --beam-size 7
 ```
-
-**Default values:**
-- `compression_ratio_threshold`: 2.4 (lower = more aggressive filtering)
-- `logprob_threshold`: -1.0 (higher = more aggressive filtering)
-- `no_speech_threshold`: 0.6 (higher = more likely to mark as silence)
-
-**When to adjust:**
-- Seeing repeated text → Lower compression_ratio_threshold to 2.0
-- Model generating nonsense → Increase logprob_threshold to -0.8
-- Too much silence marked → Lower no_speech_threshold to 0.5
 
 ### Custom Output Directories
 
@@ -289,24 +283,29 @@ python -m src.pipeline \
 
 ### Standard Outputs (Always Generated)
 
-After running the pipeline, check `outputs/` folder:
+Each run creates a timestamped folder under `outputs/runs/`:
 
 ```
-outputs/
-├── meeting.txt                # Plain text transcript
-├── meeting.json               # Transcript with timestamps
-└── meeting.summary.md         # Structured summary
+outputs/runs/
+└── 20260220T153045Z__meeting__fw-base-int8-general/
+    ├── transcript.txt          # Plain text transcript with timestamps
+    ├── transcript.json         # Transcript with segment-level detail
+    ├── summary.md              # Structured summary
+    └── manifest.json           # Run metadata
 ```
 
-### With Diarization (When --diarize Enabled)
+### With `--enable-diarization`
 
 ```
-outputs/
-├── meeting.txt
-├── meeting.json
-├── meeting.summary.md
-├── meeting.speakers.txt       # Transcript with speaker labels
-└── meeting.speaker_stats.json # Speaking time per speaker
+    ├── speakers.txt            # Transcript with speaker labels
+    ├── speaker_stats.json      # Speaking time per speaker
+    └── diarization.rttm        # RTTM output for DER/JER evaluation
+```
+
+### With `--reference-transcript`
+
+```
+    └── asr_metrics.json        # WER, CER, RTF results
 ```
 
 ### JSON Format
@@ -371,7 +370,7 @@ Complete meeting documentation:
 python -m src.pipeline \
   --audio meeting.mp3 \
   --whisper-model base \
-  --diarize \
+  --enable-diarization \
   --min-speakers 3 \
   --max-speakers 5 \
   --language en
@@ -383,15 +382,22 @@ python -m src.pipeline \
 
 ### Workflow 4: Malaysian/Manglish Content
 
-Optimized for Malaysian English and code-switching:
+Optimized for Malaysian English and code-switching using the proven `fw5_optimal` config:
+
+```bash
+python scripts/transcribe.py transcribe \
+  --audio "data/meeting.mp3" \
+  --config fw5_optimal
+```
+
+Or via the pipeline directly:
 
 ```bash
 python -m src.pipeline \
-  --audio meeting.mp3 \
-  --whisper-model mesolitica/malaysian-whisper-base \
-  --language auto \
+  --audio data/meeting.mp3 \
+  --backend faster-whisper \
   --beam-size 7 \
-  --initial-prompt "Malaysian English conversation"
+  --language en
 ```
 
 **Use when:** Speakers use Manglish, mix English and Malay
@@ -433,10 +439,10 @@ python -m src.pipeline \
 
 ### For Malaysian Content
 
-1. **Use Malaysian Whisper**: Better for Manglish and local accents
-2. **Auto-detect language**: Use `--language auto` for code-switching
-3. **Context prompts**: Add `--initial-prompt "Malaysian English"` for better results
-4. **Test configurations**: See [testing documentation](testing/README.md) for optimal settings
+1. **Use `fw5_optimal` config**: Best results for Manglish — `python scripts/transcribe.py transcribe --audio file.mp3 --config fw5_optimal`
+2. **Auto-detect language**: Use `--language auto` for code-switching between English and Malay
+3. **Context prompts**: Add `--initial-prompt "Malaysian English"` to guide the model
+4. **Avoid Malaysian Whisper**: `mesolitica/malaysian-whisper-*` is unviable (RTF 23.7x, 1,027 hallucinations) — see note in model table above
 
 ---
 
@@ -452,13 +458,13 @@ python -m src.pipeline --audio file.mp3
 python -m src.pipeline --audio file.mp3 --whisper-model medium
 
 # With diarization
-python -m src.pipeline --audio file.mp3 --diarize
+python -m src.pipeline --audio file.mp3 --enable-diarization
 
 # Full features
 python -m src.pipeline \
   --audio file.mp3 \
   --whisper-model medium \
-  --diarize \
+  --enable-diarization \
   --min-speakers 2 \
   --max-speakers 4 \
   --language en \
@@ -478,11 +484,11 @@ python -m src.pipeline --help
 
 For common issues and solutions, see the [Troubleshooting Guide](TROUBLESHOOTING.md).
 
-For testing and model comparison, see the [Testing Documentation](testing/README.md).
+For model comparison and CLI options, see the [Transcribe CLI Guide](../scripts/TRANSCRIBE_CLI_GUIDE.md).
 
 ---
 
 **Need more help?** Check:
 - [Getting Started Guide](GETTING_STARTED.md) for setup issues
 - [Troubleshooting](TROUBLESHOOTING.md) for error solutions
-- [Testing Documentation](testing/README.md) for model comparisons
+- [Scripts Guide](../scripts/README.md) for model comparison workflows

@@ -133,21 +133,21 @@ The pipeline will:
 
 ### Step 3: Check Your Results
 
+Each run creates a timestamped folder inside `outputs/runs/`:
+
 ```bash
-# View results
-ls outputs/
+# List run folders
+ls outputs/runs/
 
-# Read the transcript
-cat outputs/your_meeting.txt
-
-# Read the summary
-cat outputs/your_meeting.summary.md
+# Enter the latest run folder (tab-complete the folder name)
+ls outputs/runs/20260220T153045Z__your_meeting__fw-base-int8-general/
 ```
 
-**Expected outputs:**
-- `your_meeting.txt` - Plain text transcript
-- `your_meeting.json` - Transcript with timestamps
-- `your_meeting.summary.md` - Executive summary with action items
+**Expected outputs inside the run folder:**
+- `transcript.txt` - Plain text transcript with timestamps
+- `transcript.json` - Transcript with segment-level detail
+- `summary.md` - Executive summary with action items
+- `manifest.json` - Run metadata (model, flags, paths, timings)
 
 ---
 
@@ -162,7 +162,7 @@ python -m src.pipeline --audio data/meeting.mp3 --whisper-model medium
 ### With Speaker Identification
 
 ```bash
-python -m src.pipeline --audio data/meeting.mp3 --diarize
+python -m src.pipeline --audio data/meeting.mp3 --enable-diarization
 ```
 
 ### Specify Language (Faster)
@@ -248,7 +248,7 @@ Now that you've completed your first transcription:
    - Advanced Whisper parameters
    - Quality metrics
 
-2. **Run Tests** - Compare models with the [Testing Documentation](testing/README.md)
+2. **Compare Models** - Use `scripts/transcribe.py compare` (see [Scripts Guide](../scripts/README.md))
 
 3. **Troubleshoot Issues** - See [Troubleshooting Guide](TROUBLESHOOTING.md) for more help
 
@@ -267,11 +267,11 @@ python -m src.pipeline --audio data/meeting.mp3
 python -m src.pipeline \
   --audio data/meeting.mp3 \
   --whisper-model medium \
-  --diarize \
+  --enable-diarization \
   --language auto
 
 # Check outputs
-ls outputs/
+ls outputs/runs/
 ```
 
 ---
