@@ -56,7 +56,7 @@ category_description.mp3
 | `malaysian_whisper_stress_test.mp3` | 9.2 MB | Comprehensive stress test |
 | `shouting.mp3` | 3.6 MB | High-volume speech test |
 | `mamak session scam.mp3` | 9.2 MB | ⚠️ Spaces in filename — human transcript available |
-| `Studio Sembang Slice -  Wan in a Million ft. James Wan & _.mp3` | 5.4 MB | ⚠️ Spaces and special chars — human transcript available |
+| `studio sembang james wan.mp3` | 5.4 MB | ⚠️ Spaces in filename — human transcript available |
 
-> **⚠️ Naming violations:** `mamak session scam.mp3` and the Studio Sembang file do not follow the
+> **⚠️ Naming violations:** `mamak session scam.mp3` and `studio sembang james wan.mp3` do not follow the
 > `category_description.mp3` convention. Rename them if re-adding to the test suite.
