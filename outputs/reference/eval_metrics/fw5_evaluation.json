@@ -1,0 +1,29 @@
+{
+  "reference_file": "data/FW5_Human_Transcribe.txt",
+  "hypothesis_file": "outputs/faster_whisper_final/FW5_combined_best.txt",
+  "reference_word_count": 1461,
+  "hypothesis_word_count": 1421,
+  "metrics": {
+    "wer": {
+      "rate": 0.07665982203969883,
+      "errors": 112,
+      "total_words": 1461,
+      "substitutions": 56,
+      "deletions": 48,
+      "insertions": 8
+    },
+    "cer": {
+      "rate": 0.05812774586008787,
+      "errors": 344,
+      "total_chars": 5918,
+      "substitutions": 101,
+      "deletions": 228,
+      "insertions": 15
+    },
+    "rtf": {
+      "factor": null,
+      "audio_duration_s": null,
+      "processing_time_s": null
+    }
+  }
+}

@@ -11,7 +11,8 @@ outputs/
 │   ├── eval/                # Evaluation battles (reference transcript/RTTM provided)
 │   └── legacy/              # Older experiment folders migrated from previous layout
 ├── reference/
-│   └── human/               # Human-created reference artifacts
+│   ├── human/               # Human-created reference transcripts and RTTM files
+│   └── eval_metrics/        # Legacy WER/CER evaluation JSONs (from pre-pipeline era)
 └── archive/
     └── legacy_runs/         # Bundled legacy flat-file outputs
 ```
@@ -60,3 +61,4 @@ Example:
 - Human references were moved to `outputs/reference/human/`.
 - Legacy flat root files were bundled into:
   - `outputs/archive/legacy_runs/legacy__studio_sembang_flat_bundle/`
+- `results/` directory retired: WER/CER evaluation JSONs moved to `outputs/reference/eval_metrics/`.
