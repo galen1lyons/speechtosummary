@@ -18,9 +18,11 @@ Specialized for Manglish (Malaysian English + Malay code-switching), with speake
 
 **Special Features:**
 - ✅ Handles Manglish (Malaysian English + Malay mixing)
+- ✅ Audio preprocessing: spectral denoising + volume normalization before diarization
+- ✅ Diarize-first pipeline: pyannote runs on clean audio, each speaker segment transcribed independently
 - ✅ Speaker diarization with pyannote.audio 4.0 (identifies who spoke)
 - ✅ Dual transcription backends (faster-whisper default + OpenAI Whisper)
-- ✅ Local summarization with Mesolitica T5-base (no API key needed)
+- ✅ Local summarization with mT5_multilingual_XLSum (no API key needed)
 - ✅ Diarization evaluation metrics (DER/JER) with RTTM I/O
 - ✅ Production-ready with comprehensive testing
 
@@ -46,9 +48,9 @@ Whisper supports 90+ languages, but accuracy varies:
 
 ### Known Limitations
 - **Overlapping speech:** Diarization accuracy drops when multiple people talk simultaneously
-- **Background noise:** Heavy noise impacts transcription quality
-- **Long meetings (>2 hours):** Higher memory usage, consider splitting audio
-- **Summarization:** Mesolitica T5-base produces extractive-style summaries; quality depends on transcript clarity
+- **Background noise:** Denoising (noisereduce) helps with steady hum/HVAC; heavy music or transient noise may still impact quality
+- **Long meetings (>2 hours):** Higher memory usage; consider splitting audio
+- **Summarization:** mT5_multilingual_XLSum can hallucinate on Manglish input — treat summaries as drafts to be reviewed
 - **Accents:** Strong non-standard accents may reduce accuracy
 
 ---
@@ -147,14 +149,16 @@ Each pipeline run writes to a dedicated folder under `outputs/runs/`:
 ```
 outputs/runs/
 └── 20260220T153045Z__base_mamak__fw-base-int8-general/
+    ├── preprocessed.wav         # Denoised + normalized 16kHz mono WAV
     ├── transcript.txt           # Plain text transcript with timestamps
     ├── transcript.json          # Transcript with segment-level detail
-    ├── summary.md               # Manglish-aware summary (Mesolitica T5-base)
+    ├── summary.md               # Multilingual summary (mT5_multilingual_XLSum)
     └── manifest.json            # Run metadata (model, flags, paths, metrics)
 ```
 
 With `--enable-diarization`:
 ```
+    ├── clips/                   # Per-speaker WAV clips (kept for re-transcription)
     ├── speakers.txt             # Speaker-labeled transcript
     ├── speaker_stats.json       # Speaking time per speaker
     └── diarization.rttm         # RTTM output (for DER/JER evaluation)
@@ -179,6 +183,15 @@ python -m src.pipeline --audio data/meeting.mp3
 ### With Speaker Identification
 ```bash
 python -m src.pipeline --audio data/meeting.mp3 --enable-diarization
+```
+
+### Disable Preprocessing (skip denoising)
+```bash
+# Skip denoising but keep volume normalization
+python -m src.pipeline --audio data/meeting.mp3 --no-denoise
+
+# Skip preprocessing entirely (format conversion to 16kHz WAV still runs)
+python -m src.pipeline --audio data/meeting.mp3 --disable-preprocessing
 ```
 
 ### Using OpenAI Whisper Backend
@@ -270,15 +283,28 @@ python scripts/transcribe.py validate
 
 ## 🎯 What's Inside?
 
+**Pipeline Order:**
+```
+Audio → Preprocess/Denoise → Diarize → Slice segments → Transcribe per segment → Merge → Summarize
+```
+Fallback when diarization is disabled:
+```
+Audio → Preprocess/Denoise → Transcribe full audio → Summarize
+```
+
 **Core Technologies:**
-- **faster-whisper** (default) - CTranslate2-optimized Whisper with strict VAD, 99% hallucination reduction
-- **OpenAI Whisper** (fallback) - Original Whisper, required for HuggingFace models
+- **noisereduce + soundfile** - Spectral noise reduction and volume normalization
+- **ffmpeg-python** - Format conversion and per-speaker audio slicing
+- **faster-whisper** (default) - CTranslate2-optimized Whisper, loaded once and reused across all segments
+- **OpenAI Whisper** (fallback) - Required for HuggingFace models (e.g. Malaysian Whisper)
 - **pyannote.audio 4.0** - Speaker diarization with speaker-diarization-community-1
-- **Mesolitica T5-base** - Local Manglish-aware summarization (no API key needed)
+- **mT5_multilingual_XLSum** - Multilingual summarization, no API key needed
 - **ASR Metrics** - WER, CER, RTF for transcription quality
 - **Diarization Metrics** - DER, JER with RTTM I/O for speaker accuracy
 
 **Key Features:**
+- ✅ Audio denoising before diarization (noisereduce spectral reduction)
+- ✅ Diarize-first: pyannote runs on clean audio; Whisper gets focused per-speaker clips
 - ✅ Dual transcription backends (faster-whisper + OpenAI Whisper)
 - ✅ Automatic language detection
 - ✅ Speaker diarization with RTTM export
@@ -292,23 +318,26 @@ python scripts/transcribe.py validate
 ## 📊 Project Status
 
 **Production Ready:**
-- ✅ Transcription working (faster-whisper + OpenAI Whisper)
-- ✅ Summaries working (local Mesolitica T5-base, no API key)
+- ✅ Audio preprocessing (denoising + normalization) working
+- ✅ Transcription working (faster-whisper + OpenAI Whisper, per-segment)
+- ✅ Summaries working (local mT5_multilingual_XLSum, no API key)
 - ✅ Speaker diarization working (pyannote.audio 4.0)
 - ✅ Diarization evaluation (DER/JER with RTTM I/O)
 - ✅ Manglish support
 - ✅ Multi-language support
 - ✅ ASR metrics (WER, CER, RTF)
-- ✅ Comprehensive test suites (140 tests)
+- ✅ Comprehensive test suites (169 tests)
 - ✅ Complete documentation
 
 **Recent Updates:**
+- Feb 2026: Refactored pipeline to Preprocess→Diarize→Transcribe(per segment)→Merge→Summarize
+- Feb 2026: Added audio preprocessing stage (noisereduce spectral denoising, peak normalization, ffmpeg format conversion)
+- Feb 2026: Added `--disable-preprocessing`, `--no-denoise`, `--no-normalize` CLI flags
+- Feb 2026: Whisper model now loaded once and reused across all speaker segments
 - Feb 2026: Fixed RuntimeWarning from pipeline entry point imported in `src/__init__`
 - Feb 2026: Dead-code purge — removed compatibility shims, archived stale scripts
 - Feb 2026: `results/` retired; eval metrics moved to `outputs/reference/eval_metrics/`
-- Feb 2026: Timestamp stripping applied to all reference-transcript reads (phantom WER fix)
 - Feb 2026: Switched default backend to faster-whisper (better VAD, hallucination control)
-- Feb 2026: Replaced BART-CNN summarization with Mesolitica T5-base (Manglish-native)
 - Feb 2026: Upgraded diarization to pyannote.audio 4.0 (speaker-diarization-community-1)
 - Feb 2026: Added DER/JER diarization metrics with RTTM I/O
 
@@ -323,10 +352,11 @@ speechtosummary/
 │
 ├── src/                         # Core pipeline code
 │   ├── pipeline.py              # Main entry point (orchestrator)
-│   ├── config.py                # Pipeline configuration (WhisperConfig, SummaryConfig)
-│   ├── transcribe.py            # OpenAI Whisper backend
-│   ├── transcribe_faster.py     # faster-whisper backend (default)
-│   ├── summarize.py             # Mesolitica T5-base summarization
+│   ├── config.py                # Pipeline configuration (WhisperConfig, SummaryConfig, PreprocessConfig)
+│   ├── preprocess.py            # Audio denoising, normalization, segment slicing
+│   ├── transcribe.py            # OpenAI Whisper backend + per-segment transcription
+│   ├── transcribe_faster.py     # faster-whisper backend (default) + per-segment transcription
+│   ├── summarize.py             # mT5_multilingual_XLSum summarization
 │   ├── diarize.py               # Speaker diarization (pyannote.audio 4.0)
 │   ├── comparison.py            # Model comparison utilities
 │   ├── evaluation/
