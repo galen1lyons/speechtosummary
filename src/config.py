@@ -164,10 +164,36 @@ class DiarizationConfig:
         if self.max_speakers is not None and self.max_speakers < 1:
             raise ValueError(f"max_speakers must be >= 1, got {self.max_speakers}")
         
-        if (self.min_speakers is not None and self.max_speakers is not None 
+        if (self.min_speakers is not None and self.max_speakers is not None
             and self.min_speakers > self.max_speakers):
             raise ValueError(
                 f"min_speakers ({self.min_speakers}) must be <= "
                 f"max_speakers ({self.max_speakers})"
             )
 
+
+@dataclass
+class PreprocessConfig:
+    """Configuration for audio preprocessing before diarization and transcription."""
+
+    # Master switch: if False, skip denoising and normalization (format conversion still runs)
+    enabled: bool = True
+
+    # Whether to apply spectral noise reduction via noisereduce
+    denoise: bool = True
+
+    # Whether to normalize output volume to a target peak dBFS
+    normalize_volume: bool = True
+
+    # Target peak level in dBFS for normalization (-3.0 is a safe default)
+    target_peak_dbfs: float = -3.0
+
+    # Use stationary noise estimation (conservative; better for speech with music)
+    noise_reduce_stationary: bool = True
+
+    def validate(self) -> None:
+        """Validate configuration parameters."""
+        if not (-60.0 <= self.target_peak_dbfs <= 0.0):
+            raise ValueError(
+                f"target_peak_dbfs must be in [-60.0, 0.0], got {self.target_peak_dbfs}"
+            )

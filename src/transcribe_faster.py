@@ -215,6 +215,127 @@ def transcribe_faster(
     return json_path, txt_path, metrics
 
 
+def load_faster_whisper_model(
+    model_name: str = "base",
+    device: str = "cpu",
+    compute_type: str = "int8",
+) -> WhisperModel:
+    """
+    Load a faster-whisper model and return it.
+
+    Separated from transcription so the model can be loaded once and reused
+    across many segments, avoiding the 10-30s load penalty per segment.
+
+    Args:
+        model_name: Model size (tiny, base, small, medium, large-v2, large-v3)
+        device: Device to use (cpu or cuda)
+        compute_type: Compute precision (int8, float16, float32)
+
+    Returns:
+        Loaded WhisperModel instance
+
+    Raises:
+        ModelLoadError: If model loading fails
+    """
+    load_start = time.time()
+    try:
+        logger.info(f"Loading faster-whisper model '{model_name}' on {device}...")
+        model = WhisperModel(model_name, device=device, compute_type=compute_type)
+    except Exception as e:
+        raise ModelLoadError(f"Failed to load faster-whisper model '{model_name}': {e}") from e
+    logger.info(f"Model loaded in {time.time() - load_start:.2f}s")
+    return model
+
+
+def transcribe_segments_faster(
+    model: WhisperModel,
+    segment_clips: list,
+    language: str = "en",
+    beam_size: int = 7,
+    use_optimal_vad: bool = True,
+    vad_threshold: float = 0.7,
+    min_speech_duration_ms: int = 500,
+    min_silence_duration_ms: int = 3000,
+) -> list:
+    """
+    Transcribe multiple pre-sliced audio clips using a pre-loaded model.
+
+    Loads the model once externally and reuses it across all segments for
+    efficiency. Timestamps in returned segments are absolute (relative to
+    the full original audio), not relative to each clip.
+
+    Args:
+        model: Pre-loaded WhisperModel from load_faster_whisper_model()
+        segment_clips: List of (clip_path, original_start, original_end, speaker) tuples.
+                       clip_path is the WAV extracted by slice_segment_to_wav().
+                       original_start/end are absolute timestamps in the full audio.
+                       speaker is the speaker label from diarization.
+        language: Language code or "auto"
+        beam_size: Beam search size
+        use_optimal_vad: Whether to apply strict VAD filtering
+        vad_threshold: VAD threshold (0.7 = strict)
+        min_speech_duration_ms: Minimum speech chunk duration
+        min_silence_duration_ms: Minimum silence to split
+
+    Returns:
+        List of segment dicts with keys: start, end, text, speaker,
+        avg_logprob, no_speech_prob, compression_ratio.
+        Timestamps are absolute. List is sorted by start time.
+
+    Raises:
+        TranscriptionError: If transcription fails for any segment
+    """
+    if not segment_clips:
+        return []
+
+    vad_params = {
+        "threshold": vad_threshold,
+        "min_speech_duration_ms": min_speech_duration_ms,
+        "min_silence_duration_ms": min_silence_duration_ms,
+    }
+
+    all_segments = []
+    for clip_path, original_start, original_end, speaker in segment_clips:
+        try:
+            segments, info = model.transcribe(
+                str(clip_path),
+                language=None if language == "auto" else language,
+                beam_size=beam_size,
+                vad_filter=use_optimal_vad,
+                vad_parameters=vad_params if use_optimal_vad else None,
+            )
+            sub_segments = list(segments)
+        except Exception as e:
+            raise TranscriptionError(
+                f"Transcription failed for segment [{original_start:.2f}s–{original_end:.2f}s] "
+                f"speaker={speaker}: {e}"
+            ) from e
+
+        if not sub_segments:
+            logger.debug(
+                f"No speech detected in segment [{original_start:.2f}s–{original_end:.2f}s] "
+                f"speaker={speaker} — skipping"
+            )
+            continue
+
+        for seg in sub_segments:
+            text = seg.text.strip()
+            if not text:
+                continue
+            all_segments.append({
+                "start": original_start + seg.start,
+                "end": original_start + seg.end,
+                "text": text,
+                "speaker": speaker,
+                "avg_logprob": seg.avg_logprob,
+                "no_speech_prob": seg.no_speech_prob,
+                "compression_ratio": seg.compression_ratio,
+            })
+
+    all_segments.sort(key=lambda s: s["start"])
+    return all_segments
+
+
 def main():
     """CLI entry point for faster-whisper transcription."""
     import argparse

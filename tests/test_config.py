@@ -6,7 +6,7 @@ Covers validate() methods on all config dataclasses.
 
 import pytest
 
-from src.config import ASRMetricsConfig, DiarizationConfig, SummaryConfig, WhisperConfig
+from src.config import ASRMetricsConfig, DiarizationConfig, PreprocessConfig, SummaryConfig, WhisperConfig
 
 
 # ---------------------------------------------------------------------------
@@ -138,3 +138,30 @@ class TestDiarizationConfigValidate:
 
     def test_none_speakers_valid(self):
         DiarizationConfig(min_speakers=None, max_speakers=None).validate()
+
+
+# ---------------------------------------------------------------------------
+# PreprocessConfig
+# ---------------------------------------------------------------------------
+
+class TestPreprocessConfigValidate:
+    def test_valid_defaults(self):
+        PreprocessConfig().validate()
+
+    def test_enabled_false_valid(self):
+        PreprocessConfig(enabled=False).validate()
+
+    def test_target_peak_dbfs_above_zero_raises(self):
+        with pytest.raises(ValueError, match="target_peak_dbfs"):
+            PreprocessConfig(target_peak_dbfs=1.0).validate()
+
+    def test_target_peak_dbfs_below_minus_sixty_raises(self):
+        with pytest.raises(ValueError, match="target_peak_dbfs"):
+            PreprocessConfig(target_peak_dbfs=-61.0).validate()
+
+    def test_target_peak_dbfs_at_boundaries_valid(self):
+        PreprocessConfig(target_peak_dbfs=0.0).validate()
+        PreprocessConfig(target_peak_dbfs=-60.0).validate()
+
+    def test_all_disabled_valid(self):
+        PreprocessConfig(enabled=False, denoise=False, normalize_volume=False).validate()

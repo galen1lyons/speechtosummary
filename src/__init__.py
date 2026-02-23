@@ -29,7 +29,7 @@ Example usage:
 __version__ = "1.0.0"
 
 # Configuration
-from .config import ASRMetricsConfig, DiarizationConfig, SummaryConfig, WhisperConfig
+from .config import ASRMetricsConfig, DiarizationConfig, PreprocessConfig, SummaryConfig, WhisperConfig
 
 # Exceptions
 from .exceptions import (
@@ -38,6 +38,7 @@ from .exceptions import (
     ConfigurationError,
     DiarizationError,
     ModelLoadError,
+    PreprocessingError,
     SpeechToSummaryError,
     SummarizationError,
     TranscriptionError,
@@ -90,7 +91,8 @@ __all__ = [
     "SummaryConfig",
     "ASRMetricsConfig",
     "DiarizationConfig",
-    
+    "PreprocessConfig",
+
     # Exceptions
     "SpeechToSummaryError",
     "AudioFileError",
@@ -100,6 +102,7 @@ __all__ = [
     "ModelLoadError",
     "ASRMetricsError",
     "DiarizationError",
+    "PreprocessingError",
     
     # Logging
     "setup_logger",

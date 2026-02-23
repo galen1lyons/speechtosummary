@@ -313,6 +313,170 @@ def transcribe(
     return json_path, txt_path, metrics
 
 
+def load_openai_whisper_model(
+    model_name: str = "base",
+    device: str = "auto",
+) -> object:
+    """
+    Load an OpenAI Whisper or HuggingFace model and return it.
+
+    Handles both standard Whisper model names and HuggingFace model IDs
+    (those containing '/') via the transformers pipeline. Returns an opaque
+    model object to be passed to transcribe_segments().
+
+    Args:
+        model_name: Whisper model name or HuggingFace model ID (containing '/')
+        device: Device string ("auto", "cpu", "cuda", "cuda:0")
+
+    Returns:
+        Loaded model object (whisper.Model or transformers Pipeline wrapped in a dict)
+
+    Raises:
+        ModelLoadError: If model loading fails
+    """
+    load_start = time.time()
+    is_hf_model = "/" in model_name
+
+    try:
+        resolved_device = parse_device(device)
+    except Exception as e:
+        raise ModelLoadError(f"Failed to parse device '{device}': {e}") from e
+
+    try:
+        if is_hf_model:
+            logger.info(f"Loading HuggingFace model '{model_name}' via pipeline...")
+            from transformers import pipeline as hf_pipeline
+            device_id = -1
+            if resolved_device and "cuda" in resolved_device.lower():
+                try:
+                    device_id = int(resolved_device.split(":")[-1]) if ":" in resolved_device else 0
+                except ValueError:
+                    device_id = 0
+            model_obj = {
+                "_type": "hf",
+                "_pipe": hf_pipeline(
+                    "automatic-speech-recognition",
+                    model=model_name,
+                    device=device_id,
+                    chunk_length_s=30,
+                ),
+            }
+        else:
+            logger.info(f"Loading OpenAI Whisper model '{model_name}'...")
+            if resolved_device and resolved_device.lower() != "auto":
+                model_obj = {"_type": "whisper", "_model": whisper.load_model(model_name, device=resolved_device)}
+            else:
+                model_obj = {"_type": "whisper", "_model": whisper.load_model(model_name)}
+    except Exception as e:
+        raise ModelLoadError(f"Failed to load model '{model_name}': {e}") from e
+
+    logger.info(f"Model loaded in {time.time() - load_start:.2f}s")
+    return model_obj
+
+
+def transcribe_segments(
+    model: object,
+    model_name: str,
+    segment_clips: list,
+    language: str = "auto",
+    beam_size: int = 5,
+    temperature: float = 0.0,
+    initial_prompt: Optional[str] = None,
+) -> list:
+    """
+    Transcribe multiple pre-sliced audio clips using a pre-loaded model.
+
+    Timestamps in returned segments are absolute (relative to the full
+    original audio), not relative to each clip.
+
+    Args:
+        model: Pre-loaded model object from load_openai_whisper_model()
+        model_name: Model name (used for logging; HF models detected via '/')
+        segment_clips: List of (clip_path, original_start, original_end, speaker) tuples
+        language: Language code or "auto"
+        beam_size: Beam size for decoding
+        temperature: Sampling temperature
+        initial_prompt: Optional prompt to guide transcription
+
+    Returns:
+        List of segment dicts with keys: start, end, text, speaker.
+        Timestamps are absolute. List is sorted by start time.
+
+    Raises:
+        TranscriptionError: If transcription fails for any segment
+    """
+    if not segment_clips:
+        return []
+
+    is_hf_model = isinstance(model, dict) and model.get("_type") == "hf"
+    all_segments = []
+
+    for clip_path, original_start, original_end, speaker in segment_clips:
+        try:
+            if is_hf_model:
+                pipe = model["_pipe"]
+                generate_kwargs: Dict = {"return_timestamps": True, "num_beams": beam_size}
+                if language and language.lower() != "auto":
+                    generate_kwargs["language"] = language
+                if temperature > 0:
+                    generate_kwargs["temperature"] = temperature
+                    generate_kwargs["do_sample"] = True
+                if initial_prompt:
+                    generate_kwargs["prompt"] = initial_prompt
+                pipe_result = pipe(str(clip_path), return_timestamps=True, generate_kwargs=generate_kwargs)
+                raw_chunks = pipe_result.get("chunks", [])
+                sub_segs = []
+                for chunk in raw_chunks:
+                    ts = chunk.get("timestamp", (0.0, 0.0))
+                    text = chunk.get("text", "").strip()
+                    if text:
+                        sub_segs.append({
+                            "start": (ts[0] or 0.0),
+                            "end": (ts[1] or ts[0] or 0.0),
+                            "text": text,
+                        })
+            else:
+                whisper_model = model["_model"]
+                options: Dict = {
+                    "task": "transcribe",
+                    "beam_size": beam_size,
+                    "temperature": temperature,
+                }
+                if language and language.lower() != "auto":
+                    options["language"] = language
+                if initial_prompt:
+                    options["initial_prompt"] = initial_prompt
+                result = whisper_model.transcribe(str(clip_path), **options)
+                sub_segs = [
+                    {"start": s.get("start", 0.0), "end": s.get("end", 0.0), "text": s.get("text", "").strip()}
+                    for s in result.get("segments", [])
+                    if s.get("text", "").strip()
+                ]
+        except Exception as e:
+            raise TranscriptionError(
+                f"Transcription failed for segment [{original_start:.2f}s–{original_end:.2f}s] "
+                f"speaker={speaker}: {e}"
+            ) from e
+
+        if not sub_segs:
+            logger.debug(
+                f"No speech detected in segment [{original_start:.2f}s–{original_end:.2f}s] "
+                f"speaker={speaker} — skipping"
+            )
+            continue
+
+        for seg in sub_segs:
+            all_segments.append({
+                "start": original_start + seg["start"],
+                "end": original_start + seg["end"],
+                "text": seg["text"],
+                "speaker": speaker,
+            })
+
+    all_segments.sort(key=lambda s: s["start"])
+    return all_segments
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build argument parser for CLI."""
     parser = argparse.ArgumentParser(

@@ -44,3 +44,8 @@ class DiarizationError(SpeechToSummaryError):
     """Raised when speaker diarization fails."""
     pass
 
+
+class PreprocessingError(SpeechToSummaryError):
+    """Raised when audio preprocessing fails."""
+    pass
+

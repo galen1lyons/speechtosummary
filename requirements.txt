@@ -7,3 +7,5 @@ protobuf>=4.25.0
 torch>=2.1.0
 pyannote.audio>=4.0.0
 python-dotenv==1.0.0
+noisereduce>=3.0.0
+soundfile>=0.12.0
