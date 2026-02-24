@@ -1,12 +1,17 @@
 """
-Summarization module using local HuggingFace transformer models.
+Summarization module using Mistral 7B Instruct via llama-cpp-python.
 
-Uses csebuetnlp/mT5_multilingual_XLSum for multilingual summarization (Manglish-aware),
-then extracts structured information (action items, decisions, key points).
+Uses Mistral-7B-Instruct-v0.3 (GGUF, Q4_K_M quantization) for grounded summarization.
+The model is prompted to use ONLY information present in the transcript, preventing the
+news-article confabulation seen with mT5_multilingual_XLSum (XL-Sum training mismatch).
+Falls back to extractive summarization if llama-cpp-python is not installed or model
+download fails.
 
 Key features:
-- Local summarization via mT5_multilingual_XLSum (no API key needed)
-- Falls back to facebook/bart-large-cnn, then extractive summary if model unavailable
+- Local summarization via llama-cpp-python (CPU-efficient, no API key needed)
+- Auto-downloads Mistral 7B Q4_K_M (~4.4GB) from HuggingFace Hub on first run
+- Grounding instruction prompt prevents hallucination
+- Hierarchical chunking for long transcripts (4000 words/chunk, 8192-token context)
 - Content-type-aware output sections (meeting, interview, podcast, general)
 - Malay/Manglish keyword support for action items and decisions
 """
@@ -15,16 +20,30 @@ import argparse
 import json
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
-
-import torch
-from transformers import pipeline
+from typing import Any, Dict, List, Optional
 
 from .config import SummaryConfig
 from .exceptions import SummarizationError
 from .logger import get_logger
 
 logger = get_logger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Mistral 7B constants
+# ---------------------------------------------------------------------------
+
+_DEFAULT_GGUF_REPO = "bartowski/Mistral-7B-Instruct-v0.3-GGUF"
+_DEFAULT_GGUF_FILENAME = "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf"
+
+_MISTRAL_PROMPT_TEMPLATE = (
+    "<s>[INST] You are summarizing a meeting transcript. "
+    "Summarize ONLY what is explicitly said in the transcript below. "
+    "Do not add any information, names, or events not present in the transcript. "
+    "Write 3-5 concise sentences.\n\n"
+    "Transcript:\n{chunk}\n\n"
+    "Summary: [/INST]"
+)
 
 
 def load_transcript(json_path: Path) -> Dict:
@@ -67,7 +86,7 @@ def extract_full_text(transcript: Dict) -> str:
     return " ".join(texts)
 
 
-def chunk_text(text: str, max_words: int = 350) -> List[str]:
+def chunk_text(text: str, max_words: int = 4000) -> List[str]:
     """
     Split text into chunks for summarization.
     
@@ -90,106 +109,122 @@ def chunk_text(text: str, max_words: int = 350) -> List[str]:
     return chunks
 
 
-def generate_ai_summary(
-    text: str,
-    model_name: str = "csebuetnlp/mT5_multilingual_XLSum",
-    max_length: int = 200,
-    min_length: int = 50,
-    device: Optional[str] = None
-) -> str:
+def _try_load_mistral(config: SummaryConfig) -> Optional[Any]:
     """
-    Generate summary using HuggingFace transformer model.
-    
-    Args:
-        text: Text to summarize
-        model_name: HuggingFace model to use
-        max_length: Maximum summary length
-        min_length: Minimum summary length
-        device: Device to use ('cpu', 'cuda', or None for auto)
-        
+    Attempt to load Mistral 7B via llama-cpp-python.
+
+    Resolution order for the GGUF file:
+      1. config.llm_model_path if provided and the file exists on disk
+      2. Auto-download from bartowski/Mistral-7B-Instruct-v0.3-GGUF via huggingface_hub
+
     Returns:
-        Generated summary text
+        Llama instance on success, None if llama_cpp unavailable or load fails.
+    """
+    try:
+        from llama_cpp import Llama
+    except ImportError:
+        logger.warning("llama-cpp-python not installed; falling back to extractive summary")
+        return None
+
+    model_path: Optional[str] = config.llm_model_path
+
+    if model_path and not Path(model_path).exists():
+        logger.warning(f"Specified llm_model_path not found: {model_path}; will auto-download")
+        model_path = None
+
+    if model_path is None:
+        try:
+            from huggingface_hub import hf_hub_download
+            logger.info(f"Downloading {_DEFAULT_GGUF_FILENAME} from {_DEFAULT_GGUF_REPO} ...")
+            model_path = hf_hub_download(
+                repo_id=_DEFAULT_GGUF_REPO,
+                filename=_DEFAULT_GGUF_FILENAME,
+            )
+            logger.info(f"Model cached at: {model_path}")
+        except Exception as e:
+            logger.warning(f"Auto-download failed: {e}; falling back to extractive summary")
+            return None
+
+    try:
+        logger.info(f"Loading Mistral GGUF: {model_path}")
+        llm = Llama(
+            model_path=model_path,
+            n_ctx=config.llm_n_ctx,
+            n_threads=config.llm_n_threads,
+            n_gpu_layers=0,
+            verbose=False,
+        )
+        return llm
+    except Exception as e:
+        logger.warning(f"Failed to load Mistral model: {e}; falling back to extractive summary")
+        return None
+
+
+def generate_mistral_summary(text: str, config: SummaryConfig) -> str:
+    """
+    Generate summary using Mistral 7B Instruct via llama-cpp-python.
+
+    Chunks text at max_words=4000, summarizes each chunk with a grounding
+    instruction prompt, then runs a hierarchical pass if multiple chunks exist.
+
+    Args:
+        text: Full transcript text
+        config: SummaryConfig with llm_* fields
+
+    Returns:
+        Generated summary string, or extractive fallback on failure.
     """
     if not text:
         return ""
-    
-    try:
-        # Determine device
-        if device is None:
-            device_id = 0 if torch.cuda.is_available() else -1
-        elif device.lower() == "cpu":
-            device_id = -1
-        elif device.lower().startswith("cuda"):
-            device_id = 0
-        else:
-            device_id = -1
-        
-        logger.info(f"Loading summarization model: {model_name}")
-        
-        # Create summarization pipeline
-        summarizer = pipeline(
-            "summarization",
-            model=model_name,
-            device=device_id
-        )
-        
-        # Chunk text if too long
-        chunks = chunk_text(text, max_words=350)
-        logger.info(f"Summarizing {len(chunks)} chunk(s)")
-        
-        # T5-based models require a task prefix to activate summarization mode
-        is_t5_model = "t5" in model_name.lower()
 
-        summaries = []
-        for i, chunk in enumerate(chunks):
-            logger.debug(f"Summarizing chunk {i+1}/{len(chunks)}")
-
-            input_text = f"summarize: {chunk}" if is_t5_model else chunk
-
-            result = summarizer(
-                input_text,
-                max_length=max_length,
-                min_length=min_length,
-                do_sample=False
-            )
-            
-            summary_text = result[0]["summary_text"].strip()
-            summaries.append(summary_text)
-        
-        # Combine chunk summaries
-        if len(summaries) == 1:
-            combined = summaries[0]
-        else:
-            # If we have multiple chunks, summarize the summaries
-            combined = " ".join(summaries)
-            
-            # Do one more pass if combined text is still long
-            if len(combined.split()) > 200:
-                logger.debug("Generating final combined summary")
-                result = summarizer(
-                    combined,
-                    max_length=max_length + 30,
-                    min_length=min_length + 10,
-                    do_sample=False
-                )
-                combined = result[0]["summary_text"].strip()
-        
-        logger.info(f"Generated summary: {len(combined)} characters")
-        return combined
-        
-    except Exception as e:
-        logger.warning(f"AI summarization failed with {model_name}: {e}")
-        if model_name != "facebook/bart-large-cnn":
-            logger.info("Falling back to facebook/bart-large-cnn")
-            return generate_ai_summary(
-                text,
-                model_name="facebook/bart-large-cnn",
-                max_length=max_length,
-                min_length=min_length,
-                device=device,
-            )
-        logger.info("Falling back to extractive summary")
+    llm = _try_load_mistral(config)
+    if llm is None:
+        logger.info("Mistral unavailable; using extractive summary")
         return generate_extractive_summary(text)
+
+    chunks = chunk_text(text, max_words=4000)
+    logger.info(f"Summarizing {len(chunks)} chunk(s) with Mistral")
+
+    chunk_summaries: List[str] = []
+    for i, chunk in enumerate(chunks):
+        logger.debug(f"Summarizing chunk {i + 1}/{len(chunks)}")
+        prompt = _MISTRAL_PROMPT_TEMPLATE.format(chunk=chunk)
+        try:
+            output = llm(
+                prompt,
+                max_tokens=config.llm_max_tokens,
+                temperature=config.llm_temperature,
+                stop=["</s>", "[INST]"],
+                echo=False,
+            )
+            summary_text = output["choices"][0]["text"].strip()
+            if summary_text:
+                chunk_summaries.append(summary_text)
+        except Exception as e:
+            logger.warning(f"Chunk {i + 1} summarization failed: {e}")
+
+    if not chunk_summaries:
+        logger.warning("All chunks failed; using extractive summary")
+        return generate_extractive_summary(text)
+
+    if len(chunk_summaries) == 1:
+        return chunk_summaries[0]
+
+    logger.info("Running hierarchical summarization pass over chunk summaries")
+    combined_intermediate = " ".join(chunk_summaries)
+    final_prompt = _MISTRAL_PROMPT_TEMPLATE.format(chunk=combined_intermediate)
+    try:
+        output = llm(
+            final_prompt,
+            max_tokens=config.llm_max_tokens,
+            temperature=config.llm_temperature,
+            stop=["</s>", "[INST]"],
+            echo=False,
+        )
+        return output["choices"][0]["text"].strip()
+    except Exception as e:
+        logger.warning(f"Hierarchical pass failed: {e}; returning joined chunk summaries")
+        return combined_intermediate
 
 
 def generate_extractive_summary(text: str, num_sentences: int = 5) -> str:
@@ -517,13 +552,9 @@ def create_structured_summary(
     # Generate executive summary
     if use_ai:
         try:
-            executive_summary = generate_ai_summary(
-                full_text,
-                max_length=config.max_length,
-                min_length=config.min_length
-            )
+            executive_summary = generate_mistral_summary(full_text, config)
         except Exception as e:
-            logger.warning(f"AI summarization failed, using extractive: {e}")
+            logger.warning(f"Mistral summarization failed, using extractive: {e}")
             executive_summary = generate_extractive_summary(full_text)
     else:
         executive_summary = generate_extractive_summary(full_text)
@@ -570,9 +601,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output path for summary (default: transcript_path.summary.md)",
     )
     parser.add_argument(
-        "--model",
-        default="csebuetnlp/mT5_multilingual_XLSum",
-        help="HuggingFace summarization model",
+        "--summary-model-path",
+        default=None,
+        help=(
+            "Path to a local Mistral 7B GGUF file. "
+            "If not provided, auto-downloads Q4_K_M (~4.4GB) from HuggingFace Hub."
+        ),
     )
     parser.add_argument(
         "--content-type",
@@ -623,6 +657,7 @@ def main() -> None:
         max_length=args.max_length,
         min_length=args.min_length,
         content_type=args.content_type,
+        llm_model_path=args.summary_model_path,
     )
 
     # Create summary

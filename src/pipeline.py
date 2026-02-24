@@ -587,7 +587,15 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["meeting", "interview", "podcast", "general"],
         help="Content type for summarization (default: general)",
     )
-    
+    parser.add_argument(
+        "--summary-model-path",
+        default=None,
+        help=(
+            "Path to a local Mistral 7B GGUF file for summarization. "
+            "If not provided, auto-downloads Q4_K_M (~4.4GB) from HuggingFace Hub on first run."
+        ),
+    )
+
     # Diarization options
     parser.add_argument(
         "--enable-diarization",
@@ -661,6 +669,7 @@ def main() -> None:
     summary_config = SummaryConfig(
         max_summary_length=args.max_summary_length,
         content_type=args.content_type,
+        llm_model_path=args.summary_model_path,
     )
     
     diarization_config = DiarizationConfig(

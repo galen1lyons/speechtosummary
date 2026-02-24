@@ -78,7 +78,14 @@ class SummaryConfig:
     # AI summarization parameters
     max_length: int = 200
     min_length: int = 50
-    
+
+    # Mistral 7B / llama-cpp-python settings
+    llm_model_path: Optional[str] = None   # path to .gguf file; None = auto-download
+    llm_n_ctx: int = 8192                   # context window (Mistral supports 8192 tokens)
+    llm_n_threads: int = 4                  # CPU threads for inference
+    llm_temperature: float = 0.2           # low temperature = more deterministic output
+    llm_max_tokens: int = 512              # max tokens generated per summary chunk
+
     # Extraction limits
     max_action_items: int = 10
     max_decisions: int = 5
@@ -113,6 +120,15 @@ class SummaryConfig:
                 f"max_length ({self.max_length}) must be >= "
                 f"min_length ({self.min_length})"
             )
+
+        if self.llm_n_ctx < 512:
+            raise ValueError(f"llm_n_ctx must be >= 512, got {self.llm_n_ctx}")
+        if self.llm_n_threads < 1:
+            raise ValueError(f"llm_n_threads must be >= 1, got {self.llm_n_threads}")
+        if not (0.0 <= self.llm_temperature <= 2.0):
+            raise ValueError(f"llm_temperature must be in [0.0, 2.0], got {self.llm_temperature}")
+        if self.llm_max_tokens < 64:
+            raise ValueError(f"llm_max_tokens must be >= 64, got {self.llm_max_tokens}")
 
 
 @dataclass

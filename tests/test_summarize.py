@@ -8,6 +8,7 @@ and structured summary generation (no-AI path to avoid model downloads).
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -21,6 +22,7 @@ from src.summarize import (
     extract_full_text,
     extract_key_points,
     generate_extractive_summary,
+    generate_mistral_summary,
     load_transcript,
 )
 
@@ -272,4 +274,95 @@ class TestCreateStructuredSummary:
     def test_includes_executive_summary_section(self):
         t = self._transcript("An important topic was discussed at length today.")
         result = create_structured_summary(t, use_ai=False)
+        assert "Executive Summary" in result
+
+
+# ---------------------------------------------------------------------------
+# generate_mistral_summary (llama-cpp-python path, fully mocked)
+# ---------------------------------------------------------------------------
+
+class TestGenerateMistralSummary:
+    """Tests for generate_mistral_summary with _try_load_mistral mocked out."""
+
+    def _make_llm_mock(self, response_text: str) -> MagicMock:
+        mock_llm = MagicMock()
+        mock_llm.return_value = {"choices": [{"text": response_text}]}
+        return mock_llm
+
+    def _config(self, **kwargs) -> SummaryConfig:
+        return SummaryConfig(**kwargs)
+
+    def test_single_chunk_returns_mistral_output(self):
+        fake_summary = "The team discussed the project timeline and agreed on next steps."
+        mock_llm = self._make_llm_mock(fake_summary)
+        with patch("src.summarize._try_load_mistral", return_value=mock_llm):
+            result = generate_mistral_summary(
+                "We need to finish the report. The team agreed on the plan.",
+                self._config(),
+            )
+        assert result == fake_summary
+
+    def test_falls_back_to_extractive_when_llm_none(self):
+        text = "This is an important meeting. We discussed the key issues here."
+        with patch("src.summarize._try_load_mistral", return_value=None):
+            result = generate_mistral_summary(text, self._config())
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_empty_text_returns_empty_string(self):
+        with patch("src.summarize._try_load_mistral") as mock_loader:
+            result = generate_mistral_summary("", self._config())
+        mock_loader.assert_not_called()
+        assert result == ""
+
+    def test_multi_chunk_triggers_hierarchical_pass(self):
+        call_count = {"n": 0}
+        responses = ["Chunk one summary.", "Chunk two summary.", "Final combined summary."]
+
+        def side_effect(prompt, **kwargs):
+            idx = call_count["n"]
+            call_count["n"] += 1
+            text = responses[idx] if idx < len(responses) else "Fallback."
+            return {"choices": [{"text": text}]}
+
+        mock_llm = MagicMock(side_effect=side_effect)
+        long_text = " ".join(["word"] * 4001)
+        with patch("src.summarize._try_load_mistral", return_value=mock_llm):
+            result = generate_mistral_summary(long_text, self._config())
+
+        assert call_count["n"] >= 3
+        assert result == "Final combined summary."
+
+    def test_chunk_exception_partial_result_returned(self):
+        call_count = {"n": 0}
+
+        def side_effect(prompt, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                raise RuntimeError("simulated inference error")
+            return {"choices": [{"text": "Second chunk summary."}]}
+
+        mock_llm = MagicMock(side_effect=side_effect)
+        long_text = " ".join(["word"] * 4001)
+        with patch("src.summarize._try_load_mistral", return_value=mock_llm):
+            result = generate_mistral_summary(long_text, self._config())
+
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_all_chunks_fail_falls_back_to_extractive(self):
+        mock_llm = MagicMock(side_effect=RuntimeError("inference error"))
+        text = "This is a meeting. We talked about important things."
+        with patch("src.summarize._try_load_mistral", return_value=mock_llm):
+            result = generate_mistral_summary(text, self._config())
+        assert isinstance(result, str)
+        assert result != ""
+
+    def test_create_structured_summary_uses_mistral_when_use_ai_true(self):
+        fake_summary = "The meeting covered the Q1 budget and next steps."
+        mock_llm = self._make_llm_mock(fake_summary)
+        transcript = {"text": "We discussed the Q1 budget. We need to plan next steps.", "segments": []}
+        with patch("src.summarize._try_load_mistral", return_value=mock_llm):
+            result = create_structured_summary(transcript, use_ai=True)
+        assert fake_summary in result
         assert "Executive Summary" in result
