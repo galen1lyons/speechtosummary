@@ -92,11 +92,7 @@ def check_directories():
         errors.append("  ❌ scripts/ directory not found")
 
     # Create output directories if they don't exist
-    output_dir = project_root / "outputs" / "comprehensive_test"
-    results_dir = project_root / "results" / "comprehensive_test"
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    results_dir.mkdir(parents=True, exist_ok=True)
+    (project_root / "outputs" / "runs").mkdir(parents=True, exist_ok=True)
 
     print(f"  ✅ Output directories ready")
 
@@ -111,7 +107,6 @@ def check_scripts():
     scripts = [
         "transcribe.py",
         "check_project.py",
-        "probe.py",
     ]
 
     for script in scripts:
