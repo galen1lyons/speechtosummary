@@ -21,6 +21,7 @@ class WhisperConfig:
     beam_size: int = 7
     temperature: float = 0.0
     initial_prompt: Optional[str] = None
+    hotwords: Optional[str] = None  # faster-whisper: comma-separated words to boost
 
     # faster-whisper specific provisions
     compute_type: str = "int8"

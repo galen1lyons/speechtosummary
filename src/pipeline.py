@@ -248,6 +248,8 @@ def run_pipeline(
                     vad_threshold=whisper_config.vad_threshold,
                     min_speech_duration_ms=whisper_config.min_speech_duration_ms,
                     min_silence_duration_ms=whisper_config.min_silence_duration_ms,
+                    initial_prompt=whisper_config.initial_prompt,
+                    hotwords=whisper_config.hotwords,
                 )
             else:
                 model = load_openai_whisper_model(
@@ -377,6 +379,8 @@ def run_pipeline(
                 vad_threshold=whisper_config.vad_threshold,
                 min_speech_duration_ms=whisper_config.min_speech_duration_ms,
                 min_silence_duration_ms=whisper_config.min_silence_duration_ms,
+                initial_prompt=whisper_config.initial_prompt,
+                hotwords=whisper_config.hotwords,
             )
         else:
             json_path, txt_path, transcription_metrics = transcribe_audio(
@@ -571,7 +575,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--initial-prompt",
-        help="Initial prompt for Whisper (openai-whisper backend only)",
+        help="Initial prompt to prime the Whisper decoder (both backends)",
+    )
+    parser.add_argument(
+        "--hotwords",
+        default=None,
+        help="Comma-separated words to boost in faster-whisper (e.g. 'AMR,ROS,AGV'). No effect with openai-whisper.",
     )
     
     # Summary options
@@ -664,6 +673,7 @@ def main() -> None:
         beam_size=args.beam_size,
         temperature=args.temperature,
         initial_prompt=args.initial_prompt,
+        hotwords=args.hotwords,
     )
     
     summary_config = SummaryConfig(

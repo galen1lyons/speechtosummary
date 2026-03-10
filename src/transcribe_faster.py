@@ -44,6 +44,8 @@ def transcribe_faster(
     vad_threshold: float = 0.7,  # Strict (vs default 0.5)
     min_speech_duration_ms: int = 500,  # Longer (vs default 250)
     min_silence_duration_ms: int = 3000,  # Longer (vs default 2000)
+    initial_prompt: Optional[str] = None,
+    hotwords: Optional[str] = None,
     verbose: bool = False,
 ) -> Tuple[Path, Path, Dict]:
     """
@@ -127,6 +129,8 @@ def transcribe_faster(
             beam_size=beam_size,
             vad_filter=True,
             vad_parameters=vad_params,
+            initial_prompt=initial_prompt,
+            hotwords=hotwords,
             # temperature uses default fallback array (not specified)
         )
 
@@ -256,6 +260,8 @@ def transcribe_segments_faster(
     vad_threshold: float = 0.7,
     min_speech_duration_ms: int = 500,
     min_silence_duration_ms: int = 3000,
+    initial_prompt: Optional[str] = None,
+    hotwords: Optional[str] = None,
 ) -> list:
     """
     Transcribe multiple pre-sliced audio clips using a pre-loaded model.
@@ -303,6 +309,8 @@ def transcribe_segments_faster(
                 beam_size=beam_size,
                 vad_filter=use_optimal_vad,
                 vad_parameters=vad_params if use_optimal_vad else None,
+                initial_prompt=initial_prompt,
+                hotwords=hotwords,
             )
             sub_segments = list(segments)
         except Exception as e:

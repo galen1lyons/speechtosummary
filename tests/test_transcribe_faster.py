@@ -100,6 +100,40 @@ class TestTranscribeSegmentsFaster:
         with pytest.raises(TranscriptionError):
             transcribe_segments_faster(model, segment_clips, language="en")
 
+    def test_initial_prompt_forwarded_to_model_transcribe(self, tmp_path):
+        """initial_prompt must be passed through to model.transcribe()."""
+        clip = tmp_path / "clip.wav"
+        clip.write_bytes(b"fake")
+
+        mock_seg = self._make_mock_segment(start=0.0, end=1.0, text="hello")
+        mock_info = MagicMock()
+        model = MagicMock()
+        model.transcribe.return_value = ([mock_seg], mock_info)
+
+        from src.transcribe_faster import transcribe_segments_faster
+        segment_clips = [(clip, 0.0, 5.0, "SPEAKER_00")]
+        transcribe_segments_faster(model, segment_clips, language="en", initial_prompt="AMR strategy meeting")
+
+        _, kwargs = model.transcribe.call_args
+        assert kwargs.get("initial_prompt") == "AMR strategy meeting"
+
+    def test_hotwords_forwarded_to_model_transcribe(self, tmp_path):
+        """hotwords must be passed through to model.transcribe()."""
+        clip = tmp_path / "clip.wav"
+        clip.write_bytes(b"fake")
+
+        mock_seg = self._make_mock_segment(start=0.0, end=1.0, text="hello")
+        mock_info = MagicMock()
+        model = MagicMock()
+        model.transcribe.return_value = ([mock_seg], mock_info)
+
+        from src.transcribe_faster import transcribe_segments_faster
+        segment_clips = [(clip, 0.0, 5.0, "SPEAKER_00")]
+        transcribe_segments_faster(model, segment_clips, language="en", hotwords="AMR,AGV,ROS")
+
+        _, kwargs = model.transcribe.call_args
+        assert kwargs.get("hotwords") == "AMR,AGV,ROS"
+
     def test_results_sorted_by_start_time(self, tmp_path):
         """Results should be sorted by start time even if segments arrive out of order."""
         clip_a = tmp_path / "clip_a.wav"
