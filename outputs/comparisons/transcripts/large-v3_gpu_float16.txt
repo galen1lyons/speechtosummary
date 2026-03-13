@@ -1,0 +1,130 @@
+So, I will present to you our future group AMR strategies,
+the OVP safety, and also the integration automations.
+So, probably I will go and then for the next phase, AMR.
+Today's discussion, and then we will probably cover a little bit of the
+recap of the AMR that we already made at the moment,
+and also sharing to you some of our future plans on the AMR platform.
+So, I believe that most of you are already going through
+this slide sharing for the global automations committee.
+So, these are some of the evolutions of our AMR design.
+So, we start from the ally following AMR.
+We do the QGV, more precisely, and then do the QR codes, AMR, or what we call the QGV.
+And then after that, we start to adopt the ROS and LEF2 in our AMR,
+and the final version is what you can see here in 2005, at the end of 2005.
+So, and then one of the things that I'll be planning to develop for the future,
+and then, of course, during the global,
+and then, of course, during the global automations committee,
+we think, and then we are aware that our R&D costs or the building costs may not be so competitive
+as per what our affiliates may need to test directly from the vendor.
+So, and then, and also we are aware that the AMR may need to go through the more
+TARO safety and compliance test,
+and also the certain intelligent integration.
+So, and then, and also we are aware that the AMR may need to go through the more TARO safety and compliance test, and also the certain intelligent integration.
+So, and then, and also we are aware that the AMR may need to go through the more TARO safety and compliance test, and also the certain intelligent integration.
+And to make the entire AMR flicks and also the automations much scalable,
+and also the long-term reliable.
+So, I will divide our future plan and then into the three main strategies.
+For some of it, we are actually ongoing.
+So, the first part of it is the, we want to enhance our product range.
+And then currently, we have the Lifter type AMR,
+and also the small mini AMR.
+And then we try to collaborate with a certain partner,
+and then also an AMR maker in China,
+and then to enrich our offering.
+And beside that, and then by leveraging on their supply chain,
+able to lower down the unit cost of the AMR.
+So, the second part of it is more toward the compliance and safety.
+And the third part of it is more focusing on the integrations.
+And then whereby we try to develop the,
+the fleet management software,
+and then also the integrations with the warehouse automations,
+and manufacturing execution system,
+and the warehouse management system together.
+And a part of it, and then we also will collaborate with some startup company
+in develops the advanced visions and robotic integrations.
+So, this is our first strategy on the product supply chains and optimizations.
+I mentioned that currently we have developed the AMR,
+the 800 kilogram AMR, and also the small mini AMR.
+And then we thought that by a very low volumes of purchase,
+and then we may not able to reach the cost advantage.
+So, that's why we actually, after we went back to Malaysia,
+we actually start to buy some of the AMR maker in China.
+And then we will start to discuss,
+and initiate the discussions with them,
+on how are we going to bring down the unit cost.
+So, yeah.
+And we are almost certainly,
+and then we find the partner that able to provide this
+hardware manufacturing service.
+And at the same time, because maker also producing their own AMR.
+So, in certain range,
+as I'm told the only AMR or the pelleted AMR,
+and then probably have a collaborations
+with them.
+So, yeah.
+So, this is for recap purposes.
+And this is what the AMR that we currently develops.
+And then the 800 kilogram lifting AMR,
+and also the 300 kg the agile AMR.
+So, and then after the partnerships,
+the collaborations with the China for optimizing the supply chains,
+and then we are trying to utilizing their
+more and then into the plastic casing,
+and also the metal cladding.
+So and then our...
+But of course,
+after signing the agreements,
+and then we will have having a certain exchange in the court,
+and also certain hardware decide documents so that
+we are utilizing the assistant,
+and also assisting sensor,
+and probably sensor actuator and then,
+so that I'll be able to bring down the cost.
+and yeah and uh beside that and then uh to uh enrich the uh offering and then for the uh
+especially for uh uh aircon maker and everything that the pallet jet uh uh left-hand side and also
+the uh am are probably also necessary i think so because uh this type of amr may be a retrofits to
+uh assisting process that uh handle the panels so and then a part of it and then uh we're also
+thinking about the uh the safety and then uh even though we are trying to innovate the amr but uh we
+uh still put the safety as a part of the uh the most important part in our considerations
+so and uh after checking with uh certain uh compliance uh body like a tub and then we have a
+identified and then a several tests that may require and then including
+the iso uh 3691 and then we should emphasize on the uh autonomous uh mobile uh for the
+internal applications and the uh sorry and the id uh 61 000 which are emphasized on the uh
+electromagnetic compatibility which are more toward the uh power supplies and also the uh
+certain electrical uh uh parts of the amr and then the c-spur is more toward the emissions
+and also the
+uh fire redundancy and uh the uh reliability
+so this is our second strategy and then uh we actually uh have a uh work together with our
+in-house uh product r d team and then and uh to for this uh certifications program and then because
+i we believe that when this product ships to the uh states and then it may require certain
+compliance like you have or whatever so and then we try to uh engage and get more information so
+more than the uh the uh shipping process in the future
+and then the third strategy is more towards the uh integrations and then uh by the uh amr alone of
+course uh from point a to point b and then uh uh but we think that is uh to achieve the intelligence
+and then we require certain level of integrations so uh so that's why are we planning to develop uh
+our quick management system and then what uh testing different from the uh conventional
+fleet management system also by bender example the hik is the hik management system rcs uh they
+probably only only can work with uh within their ecosystem and then but our one we're trying to
+integrate okay and uh ross and also the uh uh our own amr and then uh into the uh picture
+and then beside that and then we also uh starts to develop a framework for the uh
+way how automation system uh or what you call the warehouse or factory automation
+system where you interact with the facility like go and leak and then
+and also other uh automations like uh asrs or the uh smart storage system
+and uh a part of it also we try to integrate uh this uh fit management and then together with the
+manufacturing execution system and also the uh warehouse management system and then because uh
+certain order or other equations we may require uh to retrieve it and then this uh mbs or wms okay
+so uh this is uh one of the uh demo on the quick management system uh basically and then uh we'll
+get more yeah how the uh
+order at the moment because there's no integration with the mbs and wms so that's why uh
+we uh will conduct this demo and then using the manual for the equations
+and then on your right hand side you can see the it's not uh the uh red scholar lots and then will
+be the uh the locations the locations and then the blue color is the uh vertex of what we call the
+edge uh which is the uh part of the amr whereby we can configure the speeds and also the uh directions
+and for the uh route planning and then the green color here and then it is really presenting the
+uh yeah probably so this is a live data that we collect from our tesla
+a bit small but uh that's just for uh and then next will be the uh map editing
+okay so demo how to put the notes and then and also the your right hand side and then it's the
+the way whereby you can just kill and fight him and this is how uh i'll be through uh
+and then uh we actually support a polynomial and then uh
+uh path and then uh it's not only straight but uh you're actually able to can make it
+better if i say you want okay

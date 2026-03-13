@@ -1,74 +1,38 @@
-# Documentation Hub
+# Documentation
 
-Welcome to the speechtosummary documentation. This page helps you navigate to the right guide based on your needs.
+## Guides
 
----
+- [Getting Started](GETTING_STARTED.md) — Install and run your first transcription
+- [User Guide](USER_GUIDE.md) — Full CLI options, models, output format
+- [Troubleshooting](TROUBLESHOOTING.md) — Common errors and fixes
 
-## 👋 For New Users
+## Research & Experiments
 
-**Just getting started?** Follow these guides in order:
+- [Model Size Experiment](MODEL_SIZE_EXPERIMENT.md) — base vs small vs medium WER comparison (March 2026)
+- [Prompt & Hotwords Experiment](PROMPT_HOTWORDS_EXPERIMENT.md) — initial_prompt and hotwords effects (March 2026)
+- [Faster-Whisper Optimization](FASTER_WHISPER_OPTIMIZATION.md) — VAD/beam tuning, 99% hallucination reduction (Feb 2026)
+- [Ground Truth Guide](GROUND_TRUTH_GUIDE.md) — Creating reference transcripts for evaluation
 
-1. **[Getting Started Guide](GETTING_STARTED.md)** - Install and run your first transcription
-2. **[User Guide](USER_GUIDE.md)** - Learn about features and options
-3. **[Troubleshooting](TROUBLESHOOTING.md)** - Fix common issues
+## Other
 
----
+- [Daikin Pipeline](DAIKIN_PIPELINE.md) — Separate future project spec (multilingual, on-prem)
 
-## 🔬 For Researchers
-
-**Comparing Whisper models or running tests?**
-
-- **[faster-whisper Optimization](FASTER_WHISPER_OPTIMIZATION.md)** - VAD and parameter tuning guide
-- **[Ground Truth Guide](GROUND_TRUTH_GUIDE.md)** - Creating reference transcripts for WER/CER evaluation
-- **[Transcribe CLI Guide](../scripts/TRANSCRIBE_CLI_GUIDE.md)** - Full CLI for compare/evaluate subcommands
-
----
-
-## 🛠️ For Maintainers
-
-**Working on the codebase?**
-
-- **Project Context**: See [CLAUDE.md](../CLAUDE.md) for development standards
-- **Data Files**: See [data/README.md](../data/README.md) for naming conventions and test files
-- **Outputs**: See [outputs/README.md](../outputs/README.md) for run folder structure
-
----
-
-## 🚀 Quick Reference
-
-### Common Commands
+## Quick Reference
 
 ```bash
-# Basic transcription (faster-whisper, default)
-python -m src.pipeline --audio data/meeting.mp3
+# Recommended production command
+python -m src.pipeline --audio data/meeting.mp3 --whisper-model small --language en
 
-# With speaker identification
-python -m src.pipeline --audio data/meeting.mp3 --enable-diarization
+# With evaluation
+python -m src.pipeline --audio data/meeting.mp3 --whisper-model small \
+  --reference-transcript outputs/reference/human/your_ref.txt
 
-# Better accuracy (slower)
-python -m src.pipeline --audio data/meeting.mp3 --whisper-model medium
-
-# Evaluate against human transcript
-python -m src.pipeline --audio data/meeting.mp3 \
-  --reference-transcript outputs/reference/human/mamak_session_scam/FW5_Human_Transcribe.txt
+# All options
+python -m src.pipeline --help
 ```
 
-### File Locations
+## File Locations
 
-- **Audio files**: `data/`
-- **Pipeline outputs**: `outputs/runs/` (production) or `outputs/campaigns/eval/` (evaluation)
-- **Human references**: `outputs/reference/human/`
-- **Scripts**: `scripts/`
-
----
-
-## 🆘 Need Help?
-
-1. Check [Troubleshooting](TROUBLESHOOTING.md) for common issues
-2. Review [User Guide](USER_GUIDE.md) for feature documentation
-3. See [Getting Started](GETTING_STARTED.md) for setup issues
-
----
-
-**Documentation Version**: 2.1
-**Last Updated**: 2026-02-20
+- Audio files: `data/`
+- Pipeline outputs: `outputs/runs/` (production) or `outputs/campaigns/eval/` (evaluation)
+- Human references: `outputs/reference/human/`

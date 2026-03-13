@@ -14,7 +14,6 @@ from typing import Dict, Optional
 from .evaluation.asr_metrics import evaluate_transcription
 from .config import DiarizationConfig, PreprocessConfig, SummaryConfig, WhisperConfig
 from .diarize import (
-    TranscriptSegment,
     diarize_audio,
     format_transcript_with_speakers,
     get_speaker_statistics,
@@ -24,16 +23,13 @@ from .diarize import (
 )
 from .evaluation.diarization_metrics import evaluate_diarization
 from .logger import get_logger
-from .preprocess import denoise_audio, slice_segment_to_wav
+from .preprocess import denoise_audio
 from .summarize import create_structured_summary, load_transcript
-from .transcribe import load_openai_whisper_model, transcribe as transcribe_audio, transcribe_segments
-from .transcribe_faster import load_faster_whisper_model, transcribe_faster, transcribe_segments_faster
+from .transcribe import transcribe as transcribe_audio
+from .transcribe_faster import transcribe_faster
 from .utils import parse_device, sanitize_filename, strip_transcript_timestamps
 
 logger = get_logger(__name__)
-
-# Minimum speaker segment duration to attempt transcription (seconds)
-MIN_SEGMENT_DURATION_S = 0.3
 
 
 def _resolve_battle_root(output_dir: Path, evaluation_enabled: bool) -> Path:
@@ -92,11 +88,8 @@ def run_pipeline(
     """
     Run complete transcription and summarization pipeline.
 
-    Pipeline order (primary path, diarization enabled):
-        Preprocess → Diarize → Transcribe per segment → Merge → Summarize
-
-    Fallback path (diarization disabled):
-        Preprocess → Transcribe full audio → Summarize
+    Pipeline order:
+        Preprocess → Transcribe (full audio) → Diarize → Align/Merge → Summarize → ASR Metrics
 
     Args:
         audio_path: Path to input audio file
@@ -113,8 +106,6 @@ def run_pipeline(
     Returns:
         Dictionary with all output paths and metrics
     """
-    import time as _time
-
     logger.info("=" * 70)
     logger.info("MEETING TRANSCRIPTION PIPELINE")
     logger.info("=" * 70)
@@ -159,7 +150,6 @@ def run_pipeline(
     asr_metrics_path = None
     speaker_transcript_path = None
     speaker_stats = None
-    segment_clips_dir = None
     preprocessed_path = run_dir / "preprocessed.wav"
 
     logger.info(f"Run ID: {run_id}")
@@ -175,14 +165,45 @@ def run_pipeline(
     logger.info(f"Preprocessed audio: {preprocessed_path}")
 
     # ------------------------------------------------------------------ #
-    # PRIMARY PATH: Diarize first, then transcribe per speaker segment    #
+    # Step 2: Transcribe full audio                                        #
+    # ------------------------------------------------------------------ #
+    logger.info("\n Step 2: Transcription (full audio)")
+    logger.info("-" * 70)
+    logger.info(f"Backend: {whisper_config.backend}")
+
+    if whisper_config.backend == "faster-whisper":
+        json_path, txt_path, transcription_metrics = transcribe_faster(
+            audio_path=preprocessed_path,
+            out_base=out_base,
+            model_name=whisper_config.model_name,
+            language=whisper_config.language if whisper_config.language != "auto" else "auto",
+            device=parse_device(whisper_config.device),
+            compute_type=whisper_config.compute_type,
+            beam_size=whisper_config.beam_size,
+            use_optimal_vad=whisper_config.use_optimal_vad,
+            vad_threshold=whisper_config.vad_threshold,
+            min_speech_duration_ms=whisper_config.min_speech_duration_ms,
+            min_silence_duration_ms=whisper_config.min_silence_duration_ms,
+            initial_prompt=whisper_config.initial_prompt,
+            hotwords=whisper_config.hotwords,
+        )
+    else:
+        json_path, txt_path, transcription_metrics = transcribe_audio(
+            audio_path=preprocessed_path,
+            out_base=out_base,
+            model_name=whisper_config.model_name,
+            language=whisper_config.language,
+            device=whisper_config.device,
+            beam_size=whisper_config.beam_size,
+            temperature=whisper_config.temperature,
+            initial_prompt=whisper_config.initial_prompt,
+        )
+
+    # ------------------------------------------------------------------ #
+    # Step 3: Diarization (optional, graceful degradation on failure)      #
     # ------------------------------------------------------------------ #
     if diarization_config.enabled:
-
-        # ---------------------------------------------------------- #
-        # Step 2: Diarization                                          #
-        # ---------------------------------------------------------- #
-        logger.info("\n Step 2: Speaker Diarization")
+        logger.info("\n Step 3: Speaker Diarization")
         logger.info("-" * 70)
 
         try:
@@ -199,128 +220,26 @@ def run_pipeline(
 
         except Exception as e:
             logger.error(f"Diarization failed: {e}")
-            logger.info("Falling back to full-audio transcription...")
+            logger.info("Continuing without speaker attribution...")
             diarization_config = DiarizationConfig(enabled=False)
             speaker_segments = []
 
-        # ---------------------------------------------------------- #
-        # Step 3: Per-segment transcription                            #
-        # ---------------------------------------------------------- #
+        # ------------------------------------------------------------------ #
+        # Step 4: Align transcript with speaker segments                       #
+        # ------------------------------------------------------------------ #
         if diarization_config.enabled and speaker_segments:
-            logger.info("\n Step 3: Transcription (per speaker segment)")
+            logger.info("\n Step 4: Aligning transcript with speaker segments")
             logger.info("-" * 70)
 
-            segment_clips_dir = run_dir / "clips"
-            segment_clips_dir.mkdir(exist_ok=True)
+            transcript_data = json.loads(json_path.read_text(encoding="utf-8"))
+            transcript_segments = transcript_data.get("segments", [])
+            merged_segments = merge_diarization_with_transcript(speaker_segments, transcript_segments)
 
-            # Build clip list, filtering out very short segments
-            segment_clips = []
-            skipped = 0
-            for i, seg in enumerate(speaker_segments):
-                if (seg.end - seg.start) < MIN_SEGMENT_DURATION_S:
-                    skipped += 1
-                    continue
-                clip_path = segment_clips_dir / f"segment_{i:04d}.wav"
-                slice_segment_to_wav(preprocessed_path, seg.start, seg.end, clip_path)
-                segment_clips.append((clip_path, seg.start, seg.end, seg.speaker))
-
-            if skipped:
-                logger.info(f"Skipped {skipped} segments shorter than {MIN_SEGMENT_DURATION_S}s")
-            logger.info(f"Transcribing {len(segment_clips)} segments...")
-
-            # Load model once, transcribe all segments
-            transcription_start = _time.time()
-            device = parse_device(whisper_config.device)
-            language = whisper_config.language if whisper_config.language != "auto" else "auto"
-
-            if whisper_config.backend == "faster-whisper":
-                model = load_faster_whisper_model(
-                    model_name=whisper_config.model_name,
-                    device=device,
-                    compute_type=whisper_config.compute_type,
-                )
-                raw_segments = transcribe_segments_faster(
-                    model=model,
-                    segment_clips=segment_clips,
-                    language=language,
-                    beam_size=whisper_config.beam_size,
-                    use_optimal_vad=whisper_config.use_optimal_vad,
-                    vad_threshold=whisper_config.vad_threshold,
-                    min_speech_duration_ms=whisper_config.min_speech_duration_ms,
-                    min_silence_duration_ms=whisper_config.min_silence_duration_ms,
-                    initial_prompt=whisper_config.initial_prompt,
-                    hotwords=whisper_config.hotwords,
-                )
-            else:
-                model = load_openai_whisper_model(
-                    model_name=whisper_config.model_name,
-                    device=whisper_config.device,
-                )
-                raw_segments = transcribe_segments(
-                    model=model,
-                    model_name=whisper_config.model_name,
-                    segment_clips=segment_clips,
-                    language=language,
-                    beam_size=whisper_config.beam_size,
-                    temperature=whisper_config.temperature,
-                    initial_prompt=whisper_config.initial_prompt,
-                )
-
-            transcription_time = _time.time() - transcription_start
-            audio_duration = raw_segments[-1]["end"] if raw_segments else 0.0
-            transcription_metrics = {
-                "model": whisper_config.model_name,
-                "audio_duration_s": audio_duration,
-                "processing_time_s": transcription_time,
-                "segments": len(raw_segments),
-                "mode": "per_segment_diarized",
-            }
-            logger.info(
-                f"Transcription complete: {len(raw_segments)} sub-segments in {transcription_time:.2f}s"
-            )
-
-            # -------------------------------------------------- #
-            # Step 4: Merge and save transcript                    #
-            # -------------------------------------------------- #
-            logger.info("\n Step 4: Merging transcript")
-            logger.info("-" * 70)
-
-            # Build transcript JSON compatible with load_transcript() / summarize
-            result = {
-                "language": whisper_config.language,
-                "segments": raw_segments,
-            }
-            json_path = out_base.with_suffix(".json")
-            txt_path = out_base.with_suffix(".txt")
-
-            json_path.write_text(
-                json.dumps(result, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
-
-            # Timestamped text file
-            lines = [
-                f"[{seg['start']:.2f} - {seg['end']:.2f}] {seg['text']}"
-                for seg in raw_segments
-            ]
-            txt_path.write_text("\n".join(lines), encoding="utf-8")
-
-            # Build TranscriptSegment list and format speaker transcript
-            merged_segments = [
-                TranscriptSegment(
-                    start=s["start"],
-                    end=s["end"],
-                    text=s["text"],
-                    speaker=s["speaker"],
-                )
-                for s in raw_segments
-            ]
             speaker_transcript = format_transcript_with_speakers(merged_segments)
             speaker_transcript_path = run_dir / "speakers.txt"
             speaker_transcript_path.write_text(speaker_transcript, encoding="utf-8")
             logger.info(f"Speaker transcript saved: {speaker_transcript_path}")
 
-            # Speaker statistics
             speaker_stats = get_speaker_statistics(merged_segments)
             logger.info("\nSpeaker Statistics:")
             for speaker, stats in sorted(speaker_stats.items()):
@@ -354,51 +273,10 @@ def run_pipeline(
                 except Exception as e:
                     logger.error(f"Diarization evaluation failed: {e}")
 
-        else:
-            # Diarization failed or returned no segments — fall through to fallback
-            diarization_config = DiarizationConfig(enabled=False)
-
     # ------------------------------------------------------------------ #
-    # FALLBACK PATH: Full-audio transcription (no diarization)            #
+    # Step 5: Summarization                                                #
     # ------------------------------------------------------------------ #
-    if not diarization_config.enabled:
-        logger.info("\n Step 2: Transcription (full audio)")
-        logger.info("-" * 70)
-        logger.info(f"Backend: {whisper_config.backend}")
-
-        if whisper_config.backend == "faster-whisper":
-            json_path, txt_path, transcription_metrics = transcribe_faster(
-                audio_path=preprocessed_path,
-                out_base=out_base,
-                model_name=whisper_config.model_name,
-                language=whisper_config.language if whisper_config.language != "auto" else "auto",
-                device=parse_device(whisper_config.device),
-                compute_type=whisper_config.compute_type,
-                beam_size=whisper_config.beam_size,
-                use_optimal_vad=whisper_config.use_optimal_vad,
-                vad_threshold=whisper_config.vad_threshold,
-                min_speech_duration_ms=whisper_config.min_speech_duration_ms,
-                min_silence_duration_ms=whisper_config.min_silence_duration_ms,
-                initial_prompt=whisper_config.initial_prompt,
-                hotwords=whisper_config.hotwords,
-            )
-        else:
-            json_path, txt_path, transcription_metrics = transcribe_audio(
-                audio_path=preprocessed_path,
-                out_base=out_base,
-                model_name=whisper_config.model_name,
-                language=whisper_config.language,
-                device=whisper_config.device,
-                beam_size=whisper_config.beam_size,
-                temperature=whisper_config.temperature,
-                initial_prompt=whisper_config.initial_prompt,
-            )
-
-    # ------------------------------------------------------------------ #
-    # Step N: Summarization                                                #
-    # ------------------------------------------------------------------ #
-    step_num = 5 if (rttm_path and speaker_transcript_path) else 3
-    logger.info(f"\n Step {step_num}: Summarization")
+    logger.info("\n Step 5: Summarization")
     logger.info("-" * 70)
 
     transcript = load_transcript(json_path)
@@ -409,12 +287,11 @@ def run_pipeline(
     logger.info(f"Summary saved: {summary_path}")
 
     # ------------------------------------------------------------------ #
-    # Step N+1: ASR Metrics (optional)                                     #
+    # Step 6: ASR Metrics (optional)                                       #
     # ------------------------------------------------------------------ #
     asr_metrics = None
     if reference_transcript:
-        step_num_asr = step_num + 1
-        logger.info(f"\n Step {step_num_asr}: ASR Metrics")
+        logger.info("\n Step 6: ASR Metrics")
         logger.info("-" * 70)
 
         from .summarize import extract_full_text
@@ -471,7 +348,6 @@ def run_pipeline(
         },
         "artifacts": {
             "preprocessed_wav": str(preprocessed_path),
-            "segment_clips_dir": str(segment_clips_dir) if segment_clips_dir else None,
             "transcript_json": str(json_path),
             "transcript_txt": str(txt_path),
             "summary_md": str(summary_path),

@@ -1,0 +1,168 @@
+So I'll delete the style.
+Continue.
+Yeah.
+So then I'll present to you on the.
+Our official program strategy.
+Generally be safety and also the intelligent.
+Automations.
+So probably have a.
+I will go and then for the next space.
+So and.
+To that discussion,
+and then we'll probably cover a little bit of the recap of the.
+That we already made.
+At the moment,
+and also in sharing to you some of our future plan or the M.
+Platform.
+So.
+I believe that most of you have already going through the.
+Dislike sharing out for the global automation.
+So these are what some of the.
+Evolutions of our design.
+And so we start from the ally calling.
+And.
+Or a GD,
+precisely,
+and then do the QR codes.
+I am.
+What we call the QGD.
+And then.
+After that, we start to adopt the most election in the.
+In our area.
+And the final version as well.
+You can see here in the 2005.
+The end of 2005.
+So.
+And then.
+What are the things that are we planning to develop for the future.
+And then.
+Of course, during the global automation.
+Community meeting.
+And then we have a.
+Where that's.
+Our.
+Our lead cause or the.
+The lead cause may not be so competitive.
+As.
+For what.
+Our.
+Philips memory.
+The test.
+For the.
+So.
+And then.
+And also we.
+Where that.
+The.
+We really need to shoot the more thorough safety and audience test.
+And also the.
+So the intelligent.
+Integrations.
+And to make the entire.
+AMR.
+Flicks and also the automation is much skillable.
+And also the local real I'm.
+So so I will divide the.
+Our future plan.
+And then into the three men's strategy.
+Some of it.
+We are actually ongoing.
+So the first part of it is the.
+Our.
+want to enhance our product range, and then currently we have the listed type of MR and also the small mini MR, and then we try to collaborate with the certain partner and then also am a good in China and then to enrich our offering and decided and then by leveraging on their supply station able to lower the unique cost of the MR.
+So the second part of it is more towards the compliant and safety, and the third part of it is more focusing on the integrations and then whereby we try to develop the feed management software and also the integrations with the warehouse automations and manufacturing execution system and the warehouse management system together.
+And part of it and then we also will collaborate with some startup company in develops the advance visions and robot integration.
+So this is our first strategy on the product supply chain and optimizations.
+So as I mentioned that currently we have developed the MR, the 800 kilogram MR and also the small mini MR, and then we thought that by a very long volumes of purchase and then we may not able to reach the cost advantage.
+So that's why we actually are in the after we went back to the nature we actually starts to buy some of the MR maker in China and then we are start to discuss and initiate the discussions with them on how are we going to bring out the really cost.
+So yeah, and we are almost certainly and then we find the partner that able to provide this.
+Hardware manufacturing service and at the same time, because the maker of so producing their own MR.
+So in certain branch, example, the only MR or the Bellaget MR and probably have a collaboration with them.
+So, yeah, so this is for record, record purposes, and this is what the MR that we currently develops and then the 100 kilogram lifting MR, and also the 300 kg the child MR.
+So, and then after the partnerships, the collaborations with the China for optimizing the price and then we are trying to use utilizing the.
+There are more and then what into the plastic casing and also the metacarpy so and then.
+But of course, after signing the agreements and then we will have having a certain action in the in the course and also certain hardware design documents so that.
+We are utilizing the assistant and also assistant sensor and probably sensor and Twitter and then so that we are able to bring out the cost and.
+And beside that and then to enrich the offering and then for the especially for.
+A con maker and everything that the Bellaget.
+A left hand side and also the excellent.
+Hopefully.
+MR probably also necessary, I think.
+So because this type of MR maybe retrofits to a assistant process that handle the pants so and then part of it and then.
+We also thinking about the safety and then even though we are trying to know where the MR but we still put the safety as a part of the most important part in all considerations.
+So after checking with a certain compliance model like a TV and then we have a identify and then several tests that may require and then including the ISO.
+369 and in which I am precise on the.
+Autonomous mobile for the notifications.
+And the.
+And I think 61,000 which are emphasized on the electromagnetic compatibility which.
+More towards the power supplies and also the electrical.
+Of the MR.
+And then this is very small to the emission so.
+And also the fire redundancy and the reliability.
+So this is our second strategy and then we actually have a.
+And together with the our in house product ID team and then and to for this certification spoken and then because I believe that I will in this product ships to the.
+States and then it may require certain compliance like you have.
+So and then we try to and get more information so that we can be.
+The shipping process in the future.
+And then the third strategy is most work the integrations and then by the MR a lot of course.
+From point B and then.
+But we think that there is a trip to intelligence and then we require certain level integrations.
+So that's why are we planning to develop the.
+Our quick management system and then what.
+Testing different from the conventional equipment management system also the vendor.
+For example, the hik is the hik equipment system RCS.
+And they probably only only can work with within their ecosystem.
+And then but our one we are trying to integrate.
+Okay.
+And Ross and also the.
+Our own MR and then into the picture.
+And then decided and then we also are starts to develop a framework for the.
+We have automation system.
+What we call the warehouse of X3 automation system where you interact with the facility.
+Like go and link and.
+And also other automations like a SRS or the small storage system.
+And a part of it also we try to integrate this.
+And then we have management and then together with the manufacturing execution system.
+And also the.
+We have management system.
+And then because certain order.
+Other questions we may require to retrieve it.
+And then what did this.
+And yes, other.
+Okay.
+So this is one of the.
+The more on the quick management system.
+And then basically and then your demo.
+We are all the.
+The moment because there's no integration with the MBS and WMS.
+So that's why we will conduct this demo and then using the manual.
+Other questions.
+And then on your right hand side, you can see this lots.
+The red color lots.
+And then we'll be the.
+The locations.
+The locations.
+And then the blue color is the protects already called it.
+Which is the top of the.
+We can configure the speeds and also the directions.
+And then for the rock planning.
+And then the green color here.
+And then it's.
+And then the.
+Yeah, probably.
+So this is a live data that we collect from our test.
+Yeah.
+A bit smooth.
+But that's just for demo.
+And then next will be the.
+Okay, so demo how to put the notes and then and also the your.
+Right hand side and then it's the appropriate panel that will be by cancer skill and fighting.
+And it's how.
+I'll be through a.
+Create the path for the.
+And then we're actually support the polylomial and.
+Path.
+And then it's not only strict.
+We're actually able to.
+You know, I say once.
+Okay.

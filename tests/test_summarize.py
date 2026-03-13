@@ -366,3 +366,12 @@ class TestGenerateMistralSummary:
             result = create_structured_summary(transcript, use_ai=True)
         assert fake_summary in result
         assert "Executive Summary" in result
+
+
+class TestMistralPromptTemplate:
+    def test_prompt_contains_domain_terms(self):
+        """Verify the prompt includes AMR glossary to prevent hallucinations."""
+        from src.summarize import _MISTRAL_PROMPT_TEMPLATE
+        assert "AMR" in _MISTRAL_PROMPT_TEMPLATE
+        assert "Autonomous Mobile Robot" in _MISTRAL_PROMPT_TEMPLATE
+        assert "Do not invent acronyms" in _MISTRAL_PROMPT_TEMPLATE

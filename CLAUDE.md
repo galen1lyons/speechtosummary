@@ -1,167 +1,240 @@
-# Speech-to-Summary Project Instructions
+# Speech-to-Summary Pipeline — Project Guide
 
 ## Project Overview
-Python-based speech-to-text pipeline comparing Original Whisper vs Malaysian Whisper models for transcription accuracy and performance.
 
-**Environment**: Uses `venv` (not `.venv`)
+On-premise speech-to-summary pipeline for a Malaysian-based Japanese company. Handles English/Malay code-switching with local accents.
 
-## The Intern's Lesson: Rigid vs Flexible Thinking
+**Stack:**
+- **ASR:** faster-whisper (CPU int8 or GPU float16)
+- **Diarization:** pyannote.audio
+- **Summarization:** Mistral 7B via llama-cpp-python
+- **Preprocessing:** noisereduce + ffmpeg
+- **Model comparison:** Multi-model benchmarking CLI (`python -m src.comparison`)
 
-### Story Context
-When tasked with comprehensive model testing, I created 36 tests to systematically compare models. After 7 tests, my colleague asked a critical question: "What's the problem?" His insight: diagnose early, adapt quickly. Running all 36 tests (4-9 hours) before diagnosing would waste time. The lesson: follow instructions rigorously, but pause to evaluate and pivot when data suggests a better path.
+**Environment:** `venv` (not `.venv`)
 
 ---
 
-## BE RIGID: Follow These Always
+## Architecture
 
-### 1. Code Quality & Safety
-- **ALWAYS** run linters before committing
-- **ALWAYS** run tests before committing
-- **NEVER** commit code with TODOs or FIXMEs
-- **NEVER** hardcode API keys - use `.env` files only
-- **ALWAYS** ensure `.env` is in `.gitignore`
+```
+Audio → Preprocess → Transcribe (full audio) → Diarize → Align/Merge → Summarize
+```
 
-### 2. Commit Standards
-- **MUST** use conventional commits: `feat:`, `fix:`, `chore:`, `test:`, `docs:`
-- Example: `feat: add Malaysian Whisper model comparison`
-- Example: `test: add transcription accuracy metrics`
+**Critical lesson learned:** Transcribe first, then diarize. Never slice audio before transcription—it starves Whisper of decoder context and nearly doubles WER.
 
-### 3. Workflow Foundation
-- **ALWAYS** explore the codebase before writing code
+| Approach | WER |
+|----------|-----|
+| Diarize → Slice → Transcribe per segment | 57% |
+| Transcribe full → Diarize → Align | 34% |
+
+---
+
+## Optimal Settings
+
+These are baked into `transcribe_faster.py` defaults:
+
+```python
+model_name = "small"       # Best accuracy/speed tradeoff
+beam_size = 7              # vs default 5
+vad_threshold = 0.7        # Strict, reduces hallucinations
+min_speech_duration_ms = 500
+min_silence_duration_ms = 3000
+compute_type = "int8"      # CPU-friendly
+```
+
+**Model benchmarks (DEDM meeting audio, no diarization):**
+
+| Model | Device | Compute | WER | CER | RTF |
+|-------|--------|---------|-----|-----|-----|
+| base | cpu | int8 | 49.46% | 58.43% | 0.207x |
+| base | cpu | float32 | 43.46% | 45.93% | 0.157x |
+| base | cuda | float16 | 45.50% | 53.16% | 0.037x |
+| **small** | **cpu** | **int8** | **30.31%** | **32.69%** | **0.453x** |
+| small | cpu | float32 | 31.74% | 37.95% | 0.403x |
+| small | cuda | float16 | 30.59% | 34.65% | 0.036x |
+| medium | cpu | int8 | 43.46% | 55.86% | 1.203x |
+| medium | cpu | float32 | 39.78% | 49.88% | 1.230x |
+| medium | cuda | float16 | 40.19% | 50.57% | 0.065x |
+| large-v3 | cuda | float16 | 43.53% | 47.61% | 0.180x |
+| large-v3-turbo | cuda | float16 | 32.29% | 32.17% | 0.048x |
+
+**Key findings:**
+- `small` int8 on CPU is the best overall (30.31% WER)
+- Larger models don't help — domain mismatch (Malaysian accents, code-switching) is the bottleneck, not model capacity
+- `medium` is worse than `small` and slower than real-time on CPU
+- `large-v3` hallucinates on this audio; `large-v3-turbo` is competitive but doesn't beat `small`
+- WER varies by recording (24-31% range observed across different audio files)
+
+---
+
+## Project Structure
+
+```
+src/
+├── pipeline.py          # Main orchestrator
+├── transcribe_faster.py # faster-whisper backend (primary)
+├── transcribe.py        # openai-whisper backend (fallback)
+├── diarize.py           # Speaker diarization + RTTM I/O
+├── preprocess.py        # Denoise, normalize, slice
+├── summarize.py         # Mistral 7B summarization
+├── comparison.py        # Multi-model comparison CLI
+├── config.py            # Dataclass configs
+├── evaluation/
+│   ├── asr_metrics.py   # WER, CER, RTF
+│   └── diarization_metrics.py  # DER, JER
+tests/
+├── test_pipeline.py     # Integration tests
+├── test_transcribe_faster.py
+├── test_diarize.py
+└── ...
+outputs/
+├── comparisons/         # Model comparison results (JSON + transcripts)
+│   └── transcripts/     # Extracted plain-text transcripts per model/config
+├── reference/human/     # Human reference transcripts for WER/CER
+```
+
+---
+
+## BE RIGID: Always Follow
+
+### Code Quality
+- Run `pytest` before committing
+- Run linters before committing
+- Never commit TODOs or FIXMEs
+- Never hardcode API keys — use `.env` only
+- Ensure `.env` is in `.gitignore`
+
+### Commits
+Use conventional commits:
+```
+feat: add speaker statistics export
+fix: handle empty diarization gracefully
+refactor: transcribe full audio first, then diarize
+test: add pipeline integration tests
+docs: update CLAUDE.md for current architecture
+```
+
+### Workflow
+- Explore codebase before writing code
 - Use `think hard` during implementation
-- Reserve `ultrathink` for planning only
-- For new features: plan → PLAN.md → implement
+- For new features: plan → PLAN.md → implement → delete PLAN.md
 
-### 4. Environment Setup
-- Virtual environment is `venv/` not `.venv/`
-- Activate with: `source venv/bin/activate`
-
----
-
-## BE FLEXIBLE: Apply Judgment Here
-
-### 1. Testing Strategy - The Core Lesson
-**Rigid**: Create comprehensive test suites when requested
-**Flexible**: After 5-10 tests, PAUSE and ask:
-- "What patterns are emerging?"
-- "Is there an obvious problem we can diagnose now?"
-- "Should we pivot our testing strategy based on early results?"
-
-**Action**: Proactively suggest diagnostic pauses during long test runs:
-```
-"I've run 7/36 tests. Should we pause to analyze these results
-and potentially adjust our testing strategy, or continue the full suite?"
-```
-
-### 2. Problem Diagnosis
-**Rigid**: Follow the user's explicit instructions
-**Flexible**: When early data reveals issues:
-- Propose early diagnosis using LLM analysis of partial results
-- Suggest targeted follow-up tests instead of exhaustive sweeps
-- Offer to pivot strategy if a clear problem emerges
-
-### 3. Model Comparison Workflows
-When comparing Original Whisper vs Malaysian Whisper:
-- Start with a small representative sample (3-5 audio files)
-- Check for obvious issues (language mixing, accuracy, formatting)
-- **THEN** scale up if needed, or pivot to targeted parameter testing
-
-### 4. Efficiency Over Completeness
-**Question to ask**: "Will running all tests give us better insights, or should we diagnose what we have first?"
-- If results show clear patterns → diagnose now
-- If results are inconclusive → continue testing
-- If a problem is obvious → stop and fix
-
----
-
-## Proactive Checkpoints
-
-### When Running Multi-Hour Test Suites
-After 15-20% completion, I should ask:
-```
-"We've completed X tests. I'm seeing [pattern/issue].
-Should we:
-1. Continue the full suite
-2. Pause to diagnose this issue
-3. Adjust our testing parameters based on what we're seeing"
-```
-
-### When Following Rigid Instructions
-If I notice potential inefficiency, I should flag it:
-```
-"Following your instructions to run all tests. However, I notice [observation].
-Would you like me to continue as planned, or should we adapt our approach?"
+### Environment
+```bash
+source venv/bin/activate
+python -m pytest tests/ -v
+python -m src.pipeline --audio input.mp3 --enable-diarization
 ```
 
 ---
 
-## Model Testing Best Practices
+## BE FLEXIBLE: Apply Judgment
 
-### Initial Comparison Protocol
-1. Select 2-3 diverse audio samples (different speakers, contexts, lengths)
-2. Run both models with default parameters
-3. **CHECKPOINT**: Review outputs for major issues
-4. Only then proceed to parameter sweeps
+### Testing Strategy
+After 5-10 tests in a long suite, pause and ask:
+- What patterns are emerging?
+- Is there an obvious problem to diagnose now?
+- Should we pivot?
 
-### Parameter Testing
-- Start with most impactful parameters (temperature, beam_size, language)
-- Use partial factorial designs, not full grids (unless justified)
-- Look for early stopping criteria
+**Proactively suggest:** "I've run 7/36 tests. Should we pause to analyze?"
 
-### Result Analysis
-- After each test batch, generate quick metrics (WER, processing time)
-- Flag anomalies immediately
-- Ask: "Is this worth investigating now?"
+### Efficiency Over Completeness
+If early results show a clear pattern → diagnose now, don't wait.
+If a problem is obvious → stop and fix.
 
----
+### Architecture Decisions
+When something isn't working, question the approach:
+- "Is this a parameter problem or an architecture problem?"
+- "Are we measuring the right thing?"
 
-## Communication Style
-
-### What I Should Do
-- Be proactive about suggesting strategic pauses
-- Question time-intensive approaches when simpler paths exist
-- Balance "following orders" with "applying judgment"
-- Admit when I don't have the experience to judge - ask you
-
-### What I Should NOT Do
-- Don't blindly execute without thinking ahead
-- Don't wait until all tests finish to raise concerns
-- Don't assume exhaustive testing is always better
-- Don't make decisions above my expertise without asking
+The diarize-first failure was an architecture problem. No amount of prompt tuning or hotwords could fix it.
 
 ---
 
-## Project-Specific Context
+## Common Tasks
 
-### Current Focus
-Comparing transcription quality between:
-- **Original Whisper**: General-purpose multilingual model
-- **Malaysian Whisper**: Fine-tuned for Malaysian English/Malay
+### Run Full Pipeline
+```bash
+python -m src.pipeline \
+  --audio data/meeting.mp3 \
+  --backend faster-whisper \
+  --whisper-model small \
+  --enable-diarization \
+  --content-type meeting
+```
 
-### Key Metrics
-- Word Error Rate (WER)
-- Processing time
-- Handling of code-switching (English ↔ Malay)
-- Punctuation and formatting accuracy
+### Evaluate Against Reference
+```bash
+python -m src.pipeline \
+  --audio data/meeting.mp3 \
+  --reference-transcript reference.txt \
+  --reference-rttm reference.rttm \
+  --run-name eval_run
+```
 
-### Common Issues to Watch For
-- Language detection errors
-- Mixed language handling
-- Hallucinations (model generating text not in audio)
-- Formatting inconsistencies
+### Run Tests
+```bash
+python -m pytest tests/ -v
+python -m pytest tests/test_pipeline.py -v  # Integration only
+```
 
 ---
 
-## Summary: The Balance
+## Key Files to Know
 
-| Situation | Rigid | Flexible |
-|-----------|-------|----------|
-| Code quality & commits | ✓ | |
-| Initial instruction following | ✓ | |
-| Mid-execution strategy | | ✓ |
-| Identifying inefficiency | | ✓ |
-| Testing approach | | ✓ |
-| Security practices | ✓ | |
-| Proactive problem-solving | | ✓ |
+| File | Purpose |
+|------|---------|
+| `src/pipeline.py` | Entry point, orchestrates everything |
+| `src/transcribe_faster.py` | Where optimal ASR settings live |
+| `src/comparison.py` | Multi-model benchmarking (`python -m src.comparison`) |
+| `src/diarize.py` | `merge_diarization_with_transcript()` is critical |
+| `src/config.py` | All config dataclasses with validation |
+| `tests/test_pipeline.py` | Integration tests for the 3 main scenarios |
 
-**Golden Rule**: Start rigid, become flexible when data warrants it. Always communicate the shift.
+---
+
+## Lessons Learned
+
+1. **Architecture > Parameters** — No prompt or hotword could fix the 23pp WER gap from bad architecture.
+
+2. **Measure early** — The diarize-first bug was caught by comparing WER between two runs, not by staring at code.
+
+3. **Keep utilities testable** — Functions like `transcribe_segments_faster()` stayed in the codebase even after the refactor because they have tests and might be useful later.
+
+4. **Graceful degradation** — Diarization can fail (missing HF token, model download issues). The pipeline continues without speaker labels rather than crashing.
+
+5. **Model size doesn't always help** — `large-v3` hallucinated worse than `small` on Malaysian-accented audio. Domain mismatch > model capacity.
+
+---
+
+## Multi-Model Comparison
+
+```bash
+# Compare models on same audio with WER/CER/RTF
+python -m src.comparison \
+  --audio "data/dedm meeting audio test.mp3" \
+  --models base small medium \
+  --reference outputs/reference/human/dedm_meeting/dedm_meeting_human_plain.txt
+
+# GPU with per-model device/compute settings
+python -m src.comparison \
+  --audio "data/dedm meeting audio test.mp3" \
+  --models base small medium large-v3 large-v3-turbo \
+  --devices cuda cuda cuda cuda cuda \
+  --compute-types float16 float16 float16 float16 float16 \
+  --reference outputs/reference/human/dedm_meeting/dedm_meeting_human_plain.txt
+```
+
+---
+
+## What's Next
+
+- [ ] Fine-tune `small` or `large-v3-turbo` on Malaysian English/Malay data to reduce WER
+- [ ] Build GUI for comparing human vs machine transcripts with diff highlighting
+- [ ] Word-level alignment for finer speaker boundaries
+- [ ] Streaming transcription for real-time use
+
+---
+
+*Last updated: 2026-03-13*

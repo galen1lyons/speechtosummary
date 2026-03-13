@@ -18,13 +18,13 @@ Specialized for Manglish (Malaysian English + Malay code-switching), with speake
 
 **Special Features:**
 - ✅ Handles Manglish (Malaysian English + Malay mixing)
-- ✅ Audio preprocessing: spectral denoising + volume normalization before diarization
-- ✅ Diarize-first pipeline: pyannote runs on clean audio, each speaker segment transcribed independently
+- ✅ Audio preprocessing: spectral denoising + volume normalization
 - ✅ Speaker diarization with pyannote.audio 4.0 (identifies who spoke)
 - ✅ Dual transcription backends (faster-whisper default + OpenAI Whisper)
-- ✅ Local summarization with mT5_multilingual_XLSum (no API key needed)
+- ✅ Local summarization with Mistral 7B Instruct via llama-cpp-python (no API key needed)
 - ✅ Diarization evaluation metrics (DER/JER) with RTTM I/O
-- ✅ Production-ready with comprehensive testing
+- ✅ Multi-model comparison CLI (`python -m src.comparison`)
+- ✅ Comprehensive test suite (182 tests)
 
 ---
 
@@ -50,7 +50,7 @@ Whisper supports 90+ languages, but accuracy varies:
 - **Overlapping speech:** Diarization accuracy drops when multiple people talk simultaneously
 - **Background noise:** Denoising (noisereduce) helps with steady hum/HVAC; heavy music or transient noise may still impact quality
 - **Long meetings (>2 hours):** Higher memory usage; consider splitting audio
-- **Summarization:** mT5_multilingual_XLSum can hallucinate on Manglish input — treat summaries as drafts to be reviewed
+- **Summarization:** Mistral 7B uses a grounding prompt ("summarize ONLY what is in the transcript") to reduce hallucination, but still treat summaries as drafts to be reviewed
 - **Accents:** Strong non-standard accents may reduce accuracy
 
 ---
@@ -81,8 +81,9 @@ Whisper supports 90+ languages, but accuracy varies:
   - Medium model: ~8-12GB RAM
   - Large models: ~16GB+ RAM
   - Diarization: +2-4GB overhead
+  - Mistral 7B summarizer (Q4_K_M): +4.4GB RAM (CPU-only)
 
-**Note:** First run downloads models (~1-5GB depending on size)
+**Note:** First run downloads models (~1-5GB for Whisper; ~4.4GB for Mistral 7B summarizer)
 
 ### Installation (First Time)
 
@@ -152,13 +153,12 @@ outputs/runs/
     ├── preprocessed.wav         # Denoised + normalized 16kHz mono WAV
     ├── transcript.txt           # Plain text transcript with timestamps
     ├── transcript.json          # Transcript with segment-level detail
-    ├── summary.md               # Multilingual summary (mT5_multilingual_XLSum)
+    ├── summary.md               # Grounded summary (Mistral 7B Instruct, local)
     └── manifest.json            # Run metadata (model, flags, paths, metrics)
 ```
 
 With `--enable-diarization`:
 ```
-    ├── clips/                   # Per-speaker WAV clips (kept for re-transcription)
     ├── speakers.txt             # Speaker-labeled transcript
     ├── speaker_stats.json       # Speaking time per speaker
     └── diarization.rttm         # RTTM output (for DER/JER evaluation)
@@ -199,6 +199,12 @@ python -m src.pipeline --audio data/meeting.mp3 --disable-preprocessing
 python -m src.pipeline --audio data/meeting.mp3 --backend openai-whisper
 ```
 
+### Use a Local Mistral GGUF (skip auto-download)
+```bash
+python -m src.pipeline --audio data/meeting.mp3 \
+  --summary-model-path /path/to/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf
+```
+
 ### Evaluate Against Human Transcript (WER/CER)
 ```bash
 python -m src.pipeline --audio data/meeting.mp3 \
@@ -208,21 +214,8 @@ python -m src.pipeline --audio data/meeting.mp3 \
 
 ### Evaluate Diarization (DER/JER)
 ```bash
-# Evaluate against a reference RTTM
-python scripts/transcribe.py diarize-evaluate \
-  --hypothesis outputs/runs/.../diarization.rttm \
-  --reference outputs/reference/human/studio_sembang/studio_sembang_human_diarization.txt
-
-# Or inline during pipeline run
 python -m src.pipeline --audio data/meeting.mp3 \
   --enable-diarization --reference-rttm data/meeting_reference.rttm
-```
-
-### Evaluate Transcription via CLI
-```bash
-python scripts/transcribe.py evaluate \
-  --hypothesis outputs/runs/.../transcript.txt \
-  --reference outputs/reference/human/mamak_session_scam/FW5_Human_Transcribe.txt
 ```
 
 **See [User Guide](docs/USER_GUIDE.md) for all options**
@@ -231,36 +224,38 @@ python scripts/transcribe.py evaluate \
 
 ## 🧪 Model Testing & Comparison
 
-Want to compare Whisper models or optimize parameters? Use the unified `scripts/transcribe.py` CLI.
+Compare multiple Whisper model sizes on the same audio with WER/CER/RTF metrics:
 
-### Compare Two Models
+### Compare Multiple Models
 ```bash
-# Compare Original Whisper base vs large-v3
-python scripts/transcribe.py compare \
-  --audio "data/meeting.mp3" \
-  --model1 base \
-  --model2 large-v3
+# Compare base, small, medium on CPU
+python -m src.comparison \
+  --audio "data/dedm meeting audio test.mp3" \
+  --models base small medium \
+  --reference outputs/reference/human/dedm_meeting/dedm_meeting_human_plain.txt
 
-# Compare with reference transcript for WER/CER
-python scripts/transcribe.py compare \
-  --audio "data/meeting.mp3" \
-  --model1 base \
-  --model2 large-v3 \
-  --reference outputs/reference/human/mamak_session_scam/FW5_Human_Transcribe.txt
+# Compare all models on GPU with per-model settings
+python -m src.comparison \
+  --audio "data/dedm meeting audio test.mp3" \
+  --models base small medium large-v3 large-v3-turbo \
+  --devices cuda cuda cuda cuda cuda \
+  --compute-types float16 float16 float16 float16 float16 \
+  --reference outputs/reference/human/dedm_meeting/dedm_meeting_human_plain.txt
 ```
 
-### Transcribe with Specific Config
-```bash
-# Optimal faster-whisper settings (beam=7, strict VAD)
-python scripts/transcribe.py transcribe \
-  --audio "data/meeting.mp3" \
-  --config fw5_optimal
+Results are saved as JSON to `outputs/comparisons/` with extracted transcripts in `outputs/comparisons/transcripts/`.
 
-# See all available configs
-python scripts/transcribe.py validate
-```
+### Benchmark Results (DEDM Meeting Audio)
 
-**See [Scripts Guide](scripts/README.md) for all CLI options**
+| Model | Device | Compute | WER | CER | RTF |
+|-------|--------|---------|-----|-----|-----|
+| base | cpu | int8 | 49.46% | 58.43% | 0.207x |
+| **small** | **cpu** | **int8** | **30.31%** | **32.69%** | **0.453x** |
+| medium | cpu | int8 | 43.46% | 55.86% | 1.203x |
+| large-v3 | cuda | float16 | 43.53% | 47.61% | 0.180x |
+| large-v3-turbo | cuda | float16 | 32.29% | 32.17% | 0.048x |
+
+`small` with int8 on CPU remains the best overall. Larger models don't improve due to domain mismatch (Malaysian accents, code-switching).
 
 ---
 
@@ -276,35 +271,40 @@ python scripts/transcribe.py validate
 - **[Ground Truth Guide](docs/GROUND_TRUTH_GUIDE.md)** - Creating reference transcripts for WER/CER
 
 ### Quick References
-- **[Scripts Guide](scripts/README.md)** - All utility scripts explained
-- **[Transcribe CLI Guide](scripts/TRANSCRIBE_CLI_GUIDE.md)** - Full CLI reference
+- **[Scripts Guide](scripts/README.md)** - Utility scripts explained
+- **[Model Size Experiment](docs/MODEL_SIZE_EXPERIMENT.md)** - base vs small vs medium results
+- **[Prompt & Hotwords Experiment](docs/PROMPT_HOTWORDS_EXPERIMENT.md)** - initial_prompt and hotwords ablation
 
 ---
 
 ## 🎯 What's Inside?
 
-**Pipeline Order:**
+**Architecture (transcribe-first):**
 ```
-Audio → Preprocess/Denoise → Diarize → Slice segments → Transcribe per segment → Merge → Summarize
+Audio → Preprocess → Transcribe (full audio) → Diarize (full audio) → Align/Merge → Summarize
 ```
-Fallback when diarization is disabled:
+
+Transcription and diarization run independently on the same preprocessed audio, then timestamps are used to map speaker labels onto transcript segments.
+
+When diarization is disabled:
 ```
-Audio → Preprocess/Denoise → Transcribe full audio → Summarize
+Audio → Preprocess → Transcribe full audio → Summarize
 ```
+
+> **Lesson learned:** Transcribe first, then diarize. Diarizing first fragments audio into short clips, starving Whisper of decoder context. Measured: **57% WER** with diarize-first vs **30% WER** with transcribe-first.
 
 **Core Technologies:**
 - **noisereduce + soundfile** - Spectral noise reduction and volume normalization
-- **ffmpeg-python** - Format conversion and per-speaker audio slicing
-- **faster-whisper** (default) - CTranslate2-optimized Whisper, loaded once and reused across all segments
+- **ffmpeg-python** - Format conversion and audio processing
+- **faster-whisper** (default) - CTranslate2-optimized Whisper with VAD
 - **OpenAI Whisper** (fallback) - Required for HuggingFace models (e.g. Malaysian Whisper)
 - **pyannote.audio 4.0** - Speaker diarization with speaker-diarization-community-1
-- **mT5_multilingual_XLSum** - Multilingual summarization, no API key needed
+- **Mistral 7B Instruct v0.3** (llama-cpp-python, Q4_K_M GGUF) - Grounded local summarization, no API key needed; auto-downloads ~4.4GB on first run
 - **ASR Metrics** - WER, CER, RTF for transcription quality
 - **Diarization Metrics** - DER, JER with RTTM I/O for speaker accuracy
 
 **Key Features:**
-- ✅ Audio denoising before diarization (noisereduce spectral reduction)
-- ✅ Diarize-first: pyannote runs on clean audio; Whisper gets focused per-speaker clips
+- ✅ Audio denoising before transcription (noisereduce spectral reduction)
 - ✅ Dual transcription backends (faster-whisper + OpenAI Whisper)
 - ✅ Automatic language detection
 - ✅ Speaker diarization with RTTM export
@@ -317,29 +317,27 @@ Audio → Preprocess/Denoise → Transcribe full audio → Summarize
 
 ## 📊 Project Status
 
-**Production Ready:**
-- ✅ Audio preprocessing (denoising + normalization) working
-- ✅ Transcription working (faster-whisper + OpenAI Whisper, per-segment)
-- ✅ Summaries working (local mT5_multilingual_XLSum, no API key)
-- ✅ Speaker diarization working (pyannote.audio 4.0)
+**Working:**
+- ✅ Audio preprocessing (denoising + normalization)
+- ✅ Transcription (faster-whisper + OpenAI Whisper)
+- ✅ Summaries (local Mistral 7B Instruct via llama-cpp-python, no API key)
+- ✅ Speaker diarization (pyannote.audio 4.0)
 - ✅ Diarization evaluation (DER/JER with RTTM I/O)
 - ✅ Manglish support
 - ✅ Multi-language support
 - ✅ ASR metrics (WER, CER, RTF)
-- ✅ Comprehensive test suites (169 tests)
+- ✅ Multi-model comparison CLI with benchmark results
+- ✅ Comprehensive test suite (182 tests)
 - ✅ Complete documentation
 
 **Recent Updates:**
-- Feb 2026: Refactored pipeline to Preprocess→Diarize→Transcribe(per segment)→Merge→Summarize
-- Feb 2026: Added audio preprocessing stage (noisereduce spectral denoising, peak normalization, ffmpeg format conversion)
-- Feb 2026: Added `--disable-preprocessing`, `--no-denoise`, `--no-normalize` CLI flags
-- Feb 2026: Whisper model now loaded once and reused across all speaker segments
-- Feb 2026: Fixed RuntimeWarning from pipeline entry point imported in `src/__init__`
-- Feb 2026: Dead-code purge — removed compatibility shims, archived stale scripts
-- Feb 2026: `results/` retired; eval metrics moved to `outputs/reference/eval_metrics/`
+- Mar 2026: Multi-model comparison across base/small/medium/large-v3/large-v3-turbo (CPU int8, CPU float32, GPU float16)
+- Mar 2026: Transcribe-first architecture implemented — WER reduced from 57% to 30%
+- Mar 2026: Added initial_prompt and hotwords support for faster-whisper
+- Feb 2026: Replaced mT5 with Mistral 7B Instruct v0.3 (Q4_K_M GGUF, llama-cpp-python)
+- Feb 2026: Added audio preprocessing (noisereduce spectral denoising, peak normalization)
 - Feb 2026: Switched default backend to faster-whisper (better VAD, hallucination control)
-- Feb 2026: Upgraded diarization to pyannote.audio 4.0 (speaker-diarization-community-1)
-- Feb 2026: Added DER/JER diarization metrics with RTTM I/O
+- Feb 2026: Upgraded diarization to pyannote.audio 4.0
 
 ---
 
@@ -354,11 +352,11 @@ speechtosummary/
 │   ├── pipeline.py              # Main entry point (orchestrator)
 │   ├── config.py                # Pipeline configuration (WhisperConfig, SummaryConfig, PreprocessConfig)
 │   ├── preprocess.py            # Audio denoising, normalization, segment slicing
-│   ├── transcribe.py            # OpenAI Whisper backend + per-segment transcription
-│   ├── transcribe_faster.py     # faster-whisper backend (default) + per-segment transcription
-│   ├── summarize.py             # mT5_multilingual_XLSum summarization
+│   ├── transcribe.py            # OpenAI Whisper backend
+│   ├── transcribe_faster.py     # faster-whisper backend (default, recommended)
+│   ├── summarize.py             # Mistral 7B Instruct summarization (llama-cpp-python)
 │   ├── diarize.py               # Speaker diarization (pyannote.audio 4.0)
-│   ├── comparison.py            # Model comparison utilities
+│   ├── comparison.py            # Multi-model comparison CLI
 │   ├── evaluation/
 │   │   ├── asr_metrics.py       # WER, CER, RTF
 │   │   └── diarization_metrics.py  # DER, JER
@@ -367,23 +365,19 @@ speechtosummary/
 │   └── logger.py                # Logging configuration
 │
 ├── data/                        # Audio test files
-│   └── README.md                # Naming conventions
 │
 ├── outputs/                     # Generated transcripts & reports
-│   ├── README.md                # Output structure guide
 │   ├── runs/                    # Production pipeline runs
-│   ├── campaigns/               # Evaluation & legacy experiment runs
-│   └── reference/               # Human transcripts & legacy eval metrics
+│   ├── campaigns/               # Evaluation runs
+│   ├── comparisons/             # Model comparison results (JSON)
+│   │   └── transcripts/         # Extracted plain-text transcripts per model/config
+│   └── reference/human/         # Human reference transcripts for WER/CER
 │
 ├── scripts/                     # Utility scripts
-│   ├── README.md                # Complete scripts guide
-│   ├── TRANSCRIBE_CLI_GUIDE.md  # Full CLI documentation
-│   ├── transcribe.py            # Unified CLI (transcribe, compare, evaluate, batch)
+│   ├── README.md                # Scripts guide
 │   ├── validate_setup.py        # Environment validation
 │   ├── check_project.py         # Project health check
-│   ├── setup_hf_token.sh        # HuggingFace token setup
-│   ├── experimental/            # Import audit tool (sync_project.py)
-│   └── archive/                 # Deprecated scripts (kept for reference)
+│   └── setup_hf_token.sh        # HuggingFace token setup
 │
 ├── docs/                        # Documentation
 │   ├── README.md                # Documentation hub
@@ -391,7 +385,9 @@ speechtosummary/
 │   ├── USER_GUIDE.md            # Feature reference
 │   ├── TROUBLESHOOTING.md       # Fix common issues
 │   ├── FASTER_WHISPER_OPTIMIZATION.md
-│   └── GROUND_TRUTH_GUIDE.md
+│   ├── GROUND_TRUTH_GUIDE.md
+│   ├── MODEL_SIZE_EXPERIMENT.md # base vs small vs medium results
+│   └── PROMPT_HOTWORDS_EXPERIMENT.md
 │
 └── venv/                        # Python virtual environment
 ```
@@ -432,4 +428,4 @@ python -m src.pipeline --audio data/meeting.mp3 --whisper-model tiny
 
 **Have questions?** → [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
-**Want to evaluate models?** → [scripts/TRANSCRIBE_CLI_GUIDE.md](scripts/TRANSCRIBE_CLI_GUIDE.md)
+**Want to compare models?** → `python -m src.comparison --help`

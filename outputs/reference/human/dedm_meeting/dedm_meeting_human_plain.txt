@@ -1,0 +1,48 @@
+Yes sir.
+Yup, so hopefully let us start continue. So today I will present to you on the our AMR strategy, safety and also the intelligent automations. So probably I'll have a.
+I will go and then for the next phase AMR. So in today discussion and then we will probably cover a little bit of the recap of the AMR that we already make at the moment and also in sharing to you some of our official plan on the AMR platform.
+So I believe that most of you have already going through the this slide sharing out for the global automations committee. So these are what some of the evolutions of our AMR design and then so we start from the early following.
+AMR or AGV more precisely and then to the QR codes AMR or what we call the QGV and then after that we start to adopt the ROS and left two in the in our AMR and the final version as what you can see here in the 2025 at the end of 2025.
+So and then one of the things that we planning to develop for the future and then of course during the global automations committee meeting and then we have aware that our RnD cost or the.
+The unit cost may not be so competitive as per what our affiliates may purchase directly from the vendor. So and then and also be aware that the AMR may need to go through the more thorough.
+Safety and compliant test and also the certain intelligent integrations and to make the entire AMR mix and also the automations much scalable and also the long term reliable.
+So, so I will divide the our future plan and then into the three main strategy for some of it we are actually ongoing. So the first part of it is the we want to enhance our product range and then currently we have the lifter type AMR and also the.
+The small mini AMR and then we try to collaborate with the certain partner and then also AMR maker in China and then to enrich our our offering and beside that and then by leveraging on their supply chain able to lower.
+So the unit cost of the AMR. So the second part of it is more toward the compliant and safety and the third part of it is more focusing on the integrations and then whereby we try to develop the fleet management software and then and also the integrations with the warehouse.
+Automations and manufacturing execution system and the warehouse management system together and a part of it. And then we also will collaborate with some startup company in develops the advanced visions and robotic integrations.
+So this is our first strategy on the product supply chains and optimizations. So as just now I mentioned that currently we have developed the AMR, the 800 kilogram AM R and also the small mini AMR and then we thought that.
+By a very low volumes of purchase and then we may not able to reach the cost advantage. So that's why we actually are in after we went back to the Malaysia, we actually starts to buy some of the.
+AMR maker in China and then we are start to discuss and initiate the discussions with them on how are we going to bring down the unit cost.
+So yeah and we are almost certainly and then we find the partner that able to provide this hardware manufacturing service and at the same time because the maker also producing their own AMR. So in certain range example the.
+Only AMR or the pelleted AMR and then probably have a collaborations with them.
+So yeah, so this is for requirement purposes and this is our the AMR that we currently develops and then the 800 kilogram lifting AMR and also the 300 KG the Jiao AMR.
+So and then after the partnerships, the collaborations with the the China for optimizing the prices and then we we are trying to utilizing the the mould and then put into the plastic casing and also the metal crafting.
+So and then uh but uh of course uh after signing the agreements and then we will have having a certain uh exchange in the in the court and also certain hardware design uh documents so that uh.
+We are utilizing the assisting and also assisting sensor and probably sensor and actuator and then so that I'll be able to bring down the cost and yup.
+And beside that and then to enrich the offering and then for the especially for aircon maker and everything that the pallet jack left hand side and also the forklift AMR probably also necessary I think so because this type of AMR may be a retrofit to assisting process that handle the pants.
+So and then part of it and then we also thinking about the the safety and then even though we are trying to innovate the AMR, but we still put the safety as a part of the the most important part in our considerations.
+So and after checking with CERN's compliance body like ATV and then we have identified and then several tests that may require and then including the ISO 3691 and then which emphasize on the.
+Autonomous mobile for the indoor applications.
+LD also.
+And the IDE 61,000 which are emphasized on the electromagnetic compatibility which are more toward the power supplies and also the certain electrical parts of the AMR. and then the feasibility is more toward the emissions.
+And also the fire redundancy and the reliability.
+So this is our second strategy and then we actually have a work together with the our in house product R&D team and then and to for this certifications program and then because I we believe that when this product ships.
+To the states and then it may require certain compliance like you have or whatever so and then we try to and engage and get more information so that will smoothen the the shipping process in the future.
+And then the third strategy is more toward the integrations and then by the AMR alone of course from point A to point B and then but we think that there is.
+To achieve the intelligence and then we require certain level integrations. So that's why I'll be planning to develop the our fleet management system and then what this thing different from the conventional fleet management system offered by vendor example the HIK the HIK quick management system.
+RCS they probably only only can work with within their ecosystem and then but our one we're trying to integrate.
+OK. And ROS and also the our own AMR and then into the picture. And then beside that and then we also start to develop a framework for the warehouse automation system or what we call the warehouse or factory automation system where you interact with the facility.
+Like go and leak and then and also other automations like ASRS or the smart storage system and a part of it also we try to integrate this.
+Fleet management and then together with the manufacturing execution system and also the warehouse management system and then because certain order order creations we may require to retrieve it and then brought this MES or WMS.
+OK.
+So uh, this is uh one of the uh demo on the fleet management system.
+Uh basically and then uh we'll demo all the uh uh live order at the moment because there's no integration with the MES and WMS. So that's why uh we uh will conduct this demo and then using the manual order creations.
+And then on your right hand side you can see the node is the Reds color and then will be the the locations, the locations and then the blue color is the vertex over the coded edge which is the path of the AMR. whereby we can configure the speeds and also the directions.
+And then for the route planning and then the green color here and then it's representing the.
+Uh, yeah, probably I have a quick play.
+So this is a a live data that we collect from our test. Yeah, a bit small, but just for demo.
+Yeah.
+And then next will be the map editing.
+OK, so demo how how to put in nodes and then and also the your right hand side and there is the property panel that whereby you can skill and fighting and this how I'll be through create the path overall for the.
+And then we actually support a polynomial and then path and then it's not only straight, but we're actually able to (unintelligible).
+OK.

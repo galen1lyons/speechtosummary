@@ -1,0 +1,169 @@
+So I'll probably just continue.
+So today I'm going to present to you
+on the artificial-proof AMR strategy,
+scalability, safety, and also the intelligent motivations.
+So probably I'll have a go.
+And then for the next space, AMR.
+And today's discussion, and then we
+will probably cover a little bit of the recap of the AMR
+that we already made at the moment,
+and also in sharing to you some of our future plans
+on the AMR platform.
+So I believe that most of you have already
+going through the slides sharing out
+for the Global Automation Committee.
+So these are some of the evolutions of our AMR design.
+So we start from the R line following AMR or AGD,
+more precisely, and then to the QR codes by AMR,
+or what we call the QGD.
+And then after that, we start to adopt the ROS-NF2 in our AMR
+and the final version as well.
+You can see here at the end of 2005.
+So and then one of the things that I'll
+be planning to develop for the future,
+and then of course, during the Global Automation Committee,
+we think and then we are aware that our R&D cost
+or the unit cost may not be so competitive as per what
+our affiliates may move to test directly from the vendor.
+So and then also we are aware that the AMR
+may need to go through the more thorough safety and compliance
+and also the integration integrations
+and to make the entire AMR fix and also the automation
+much scalable and also the long-term reliable.
+So I will divide our future plan and then
+into the three main strategies.
+For some of it, we are actually ongoing.
+So the first part of it is we want
+to enhance our product range.
+And then currently, we have the lifted type of AMR
+and also the small mini AMR.
+And then we try to collaborate with a certain partner
+and then also an AMR maker in China
+and then to enrich our offering and beside that
+and then by leveraging on their suppliers
+able to lower down the unit cost of the AMR.
+So the second part of it is more toward the compliance
+and safety and the third part of it
+is more focusing on the integrations
+and then whereby we try to develop
+the fleet management software and also the integrations
+with the warehouse automations and manufacturing
+execution system and the warehouse management system
+together.
+And a part of it and then we also will collaborate
+with some startup company in develops the advanced visions
+and robotic integrations.
+So this is our first strategy on the product supply
+change and optimizations.
+So as I mentioned that currently we
+have developed the AMR, the 800 kilogram AMR
+and also the small mini AMR.
+And then we thought that by a very low volumes of purchase
+and then we may not able to reach the cost advantage.
+So that's why we actually after we went back to Malaysia
+we actually start to buy some of the AMR maker in China
+and then we start to discuss and initiate the discussions
+with them on how are we going to bring down the unit cost.
+So yeah and we are almost certainly
+and then we find the partner that
+able to provide this hardware manufacturing service
+and at the same time because the maker is also
+producing their own AMR.
+So in certain branch, for example, the only AMR
+or the telejet AMR and then probably
+have collaborations with them.
+So yeah, so this is for required purposes
+and this is our AMR that we currently
+develops and then the 800 kilogram lifting AMR
+and also the 300 kg agile AMR.
+And then after the partnerships, the collaborations
+with the China for optimizing the prices
+and then we are trying to utilizing the plastic casing
+and also the metacard.
+And then of course, after signing the agreements
+and then we will have having a certain exchange in the courts
+and also certain hardware design documents
+so that we are utilizing the assisting
+and also assisting our sensor and probably sensor
+and actuator and then so that we are
+able to bring down the cost.
+And beside that and then to enrich the offering
+and then for the especially for aircon maker and everything
+at the left hand side and also the AMR
+probably also necessary, I think.
+So because this type of AMR maybe
+retrofits to assisting process that handle the pants.
+So and then part of it and then we also
+thinking about the safety and then
+even though we are trying to innovate the AMR
+but we still put the safety as a part of the most important part
+in our considerations.
+So and after checking with compliance body like TUB
+and then we have identified and then several tests
+that may require and then including the ISO 3691
+and then we should emphasize on the autonomous mobile
+for the interoperations.
+And the 61,000 which are emphasized
+on the electromagnetic compatibility
+which are more toward the power supplies
+and also the electrical parts of the AMR.
+And then the CISPR is more toward the emission
+so and also the fire redundancy and the reliability.
+So this is our second strategy and then we actually
+have a work together with our in-house product R&D team
+and then for these certifications program
+and then because we believe that when this product ships
+to the states and then it may require certain compliance
+like UAL or whatever.
+So and then we try to engage and get more information
+so that to smoothen the shipping process in the future.
+And then the third strategy is more toward the integrations
+and then by the AMR alone of course from point B
+and then but we think that is to achieve the intelligence
+and then we require a certain level of integrations.
+So that's why are we planning to develop our quick management
+system and then what is different
+from the conventional quick management system
+also by Bender, for example, the HIK quick management system
+or RCS.
+They probably only can work within their ecosystem
+and then but one we are trying to integrate and also
+the AMR and then into the picture.
+And then beside that and then we also
+start to develop a framework for the warehouse automation
+system or what we call the warehouse
+or factory automation system where you interact
+with the facility like gold and lead and energy
+and also other automations like ASRS or the smart storage
+system.
+And a part of it also we try to integrate this quick management
+and then together with the manufacturing execution system
+and also the warehouse management system
+and then because of certain other equations
+we may require to retrieve it and then
+broadly these are MVS or the DMS.
+OK.
+So this is one of the demo on the quick management system.
+Basically and then we'll demo the live order at the moment
+because there's no integration with the MVS and WMS.
+So that's why we will conduct this demo
+and then using the manual model creations.
+And then on your right hand side you
+can see the red color and then will be the locations
+and then the blue color is the vertex
+or what you call the edge which is the part of the AMR
+whereby you can configure the speeds and also the directions
+and then for the route planning.
+And then the green color here and then
+it's really representing the AMR itself.
+So this is a live data that we collect from our Tesla.
+Bit smooth but just a small demo process.
+And then next will be the map editing.
+So demo how to put the notes and also your right hand side
+and then it's the property panel whereby
+you can just kill and fight him.
+And this is how we create the path for the AMR.
+And then we actually support a polynomial in the path
+and then it's not only straight but you're actually
+able to configure it in the same way.
+OK.
